@@ -12,7 +12,7 @@ in
   options.router.dns = {
     upstreams = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ "tls://dns.quad9.net" "tls://1dot1dot1dot1.cloudflare-dns.com" "tls://1.1.1.1" "tls://1.0.0.1" ];
+      default = [ "tls://dns.quad9.net" "tls://one.one.one.one" ];
       description = "DoT upstream DNS servers.";
     };
     bootstrap = lib.mkOption {
