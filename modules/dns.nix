@@ -100,7 +100,7 @@ in
           cache_enabled = true;
           cache_size = dcfg.cacheSize;
           cache_ttl_min = 300;
-          cache_ttl_max = 86400;
+          cache_ttl_max = 7200;
           handle_ddr = true;
           hostsfile_enabled = true;
           pending_requests.enabled = true;
