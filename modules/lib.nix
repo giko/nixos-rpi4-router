@@ -42,15 +42,18 @@ in
     in [ wan ] ++ tuns;
 
   # Convert { address, prefixLength } to CIDR subnet string.
+  # Supports any prefix length 0-32.
   # E.g., { address = "192.168.1.1"; prefixLength = 24; } -> "192.168.1.0/24"
   addrToSubnet = { address, prefixLength, ... }:
     let
       parts = lib.splitString "." address;
       octets = map lib.toInt parts;
-      mask = if prefixLength == 24 then [ 255 255 255 0 ]
-             else if prefixLength == 16 then [ 255 255 0 0 ]
-             else if prefixLength == 8 then [ 255 0 0 0 ]
-             else builtins.throw "addrToSubnet: only /8, /16, /24 supported, got /${toString prefixLength}";
-      masked = lib.zipListsWith (o: m: toString (lib.bitAnd o m)) octets mask;
+      # Per-octet mask value for N masked bits within that octet
+      bitsToMask = [ 0 128 192 224 240 248 252 254 255 ];  # index = bits masked
+      maskForOctet = idx:
+        let bits = lib.max 0 (lib.min 8 (prefixLength - idx * 8));
+        in builtins.elemAt bitsToMask bits;
+      maskOctets = map maskForOctet [ 0 1 2 3 ];
+      masked = lib.zipListsWith (o: m: toString (lib.bitAnd o m)) octets maskOctets;
     in "${lib.concatStringsSep "." masked}/${toString prefixLength}";
 }

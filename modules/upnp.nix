@@ -28,6 +28,11 @@ in
       default = [];
       description = "miniupnpd allow rules (without 'allow' prefix).";
     };
+    uuid = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "miniupnpd UUID. Set to keep identity stable across rebuilds.";
+    };
   };
 
   config = lib.mkIf (cfg.enable && ucfg.enable) {
@@ -42,6 +47,7 @@ in
         system_uptime=yes
         notify_interval=900
 
+        ${lib.optionalString (ucfg.uuid != null) "uuid=${ucfg.uuid}"}
         ${denyLines}
         ${allowLines}
         deny 0-65535 0.0.0.0/0 0-65535
