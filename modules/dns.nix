@@ -57,6 +57,11 @@ in
       default = 10000000;
       description = "DNS cache size in bytes.";
     };
+    optimisticCache = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Serve expired cache entries while refreshing in background.";
+    };
     dnssec = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -101,6 +106,7 @@ in
           cache_size = dcfg.cacheSize;
           cache_ttl_min = 300;
           cache_ttl_max = 7200;
+          cache_optimistic = dcfg.optimisticCache;
           handle_ddr = true;
           hostsfile_enabled = true;
           pending_requests.enabled = true;
