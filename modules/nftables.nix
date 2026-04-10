@@ -75,6 +75,12 @@ let
         }''
   ) domainSetNames;
 
+  # Drop all forwarded traffic from these MACs (internet + VPN + cross-subnet).
+  # Intra-subnet traffic is unaffected since it is not routed through forward.
+  blockMacLines = lib.concatMapStringsSep "\n          " (mac:
+    ''ether saddr ${mac} counter drop''
+  ) cfg.nftables.blockedMacs;
+
   # UPnP pre-accept deny rules (block UPnP ports from secondary subnets)
   upnpDenyLines =
     if cfg.upnp.enable && hasMultipleSubnets then
@@ -125,6 +131,17 @@ in
         description = "Raw nftables inserted in forward chain before inter-subnet accept.";
       };
 
+      blockedMacs = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        example = [ "aa:bb:cc:dd:ee:ff" ];
+        description = ''
+          MAC addresses to drop in the forward chain. Blocks internet,
+          VPN tunnels, and cross-subnet access. Intra-subnet LAN traffic
+          is unaffected since it is not forwarded by the router.
+        '';
+      };
+
       extraPreroutingRules = lib.mkOption {
         type = lib.types.lines;
         default = "";
@@ -161,6 +178,8 @@ in
 
           chain forward {
             type filter hook forward priority filter; policy drop;
+
+            ${lib.optionalString (cfg.nftables.blockedMacs != []) blockMacLines}
 
             ct state established,related accept
             ct state invalid drop
