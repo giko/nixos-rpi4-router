@@ -81,6 +81,21 @@ let
     ''ether saddr ${mac} counter drop''
   ) cfg.nftables.blockedMacs;
 
+  # Default-deny MAC allowlist scoped to a source subnet. Survives iOS
+  # Private Wi-Fi Address rotation because it flips the policy: any
+  # MAC not in the set is dropped instead of trying to enumerate bad MACs.
+  # MACs from router.dhcp.staticLeases are auto-merged so adding a static
+  # lease implicitly trusts the device.
+  hasAllowlist = cfg.nftables.allowedMacs != null;
+  allowedMacsFinal =
+    if hasAllowlist then
+      lib.unique (
+        (map lib.toLower cfg.nftables.allowedMacs.macs)
+        ++ (map (l: lib.toLower l.mac) cfg.dhcp.staticLeases)
+      )
+    else [];
+  allowedMacsSet = lib.concatMapStringsSep ", " (m: m) allowedMacsFinal;
+
   # UPnP pre-accept deny rules (block UPnP ports from secondary subnets)
   upnpDenyLines =
     if cfg.upnp.enable && hasMultipleSubnets then
@@ -142,6 +157,40 @@ in
         '';
       };
 
+      allowedMacs = lib.mkOption {
+        type = lib.types.nullOr (lib.types.submodule {
+          options = {
+            sourceNet = lib.mkOption {
+              type = lib.types.str;
+              example = "192.168.1.0/24";
+              description = "Source IP subnet the allowlist is scoped to.";
+            };
+            macs = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [];
+              example = [ "aa:bb:cc:dd:ee:ff" ];
+              description = ''
+                Explicit allowlist of source MACs within sourceNet. MACs from
+                router.dhcp.staticLeases are auto-merged into this list, so
+                only dynamic devices without a static lease need listing here.
+              '';
+            };
+          };
+        });
+        default = null;
+        description = ''
+          Default-deny MAC allowlist for forwarded traffic originating from
+          sourceNet. Any source MAC in sourceNet that is not in the allowlist
+          (macs + router.dhcp.staticLeases) has its forwarded traffic dropped.
+
+          Use this instead of blockedMacs when you need to block a device
+          that rotates its MAC address (e.g. iOS Private Wi-Fi Address +
+          "Forget This Network"). Other source subnets (e.g. server subnets)
+          are unaffected; intra-subnet LAN traffic is also unaffected since
+          it is not forwarded.
+        '';
+      };
+
       extraPreroutingRules = lib.mkOption {
         type = lib.types.lines;
         default = "";
@@ -180,6 +229,8 @@ in
             type filter hook forward priority filter; policy drop;
 
             ${lib.optionalString (cfg.nftables.blockedMacs != []) blockMacLines}
+
+            ${lib.optionalString hasAllowlist ''iifname "${lanIf}" ip saddr ${cfg.nftables.allowedMacs.sourceNet} ether saddr != { ${allowedMacsSet} } counter drop''}
 
             ct state established,related accept
             ct state invalid drop
