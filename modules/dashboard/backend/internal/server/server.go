@@ -11,21 +11,32 @@ import (
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/spa"
 )
 
+// Version is set at build time via -ldflags='-X .../internal/server.Version=...'.
+// CI (build-dashboard.yml) passes the computed release version here so
+// /api/health reports the exact release identifier. Local `go build` leaves
+// it empty, at which point readVersion falls back to BuildInfo/VCS data.
+var Version = ""
+
 var (
-	startedAt = time.Now().UTC()
-	version   = readVersion()
+	startedAt     = time.Now().UTC()
+	runningVersion = readVersion()
 )
 
 // readVersion returns a best-effort identifier of the running binary.
 //
 // Priority order:
-//  1. Module version from a tagged `go install` (`info.Main.Version`) — empty
-//     for `go build` from a checkout, which is the normal CI flow.
-//  2. VCS revision embedded by `go build -buildvcs=true` (default since
-//     Go 1.18). Short-SHA plus a "-dirty" suffix when the working tree was
-//     modified at build time. This is what CI produces.
-//  3. "dev" as a last resort (non-go-built artifact, stripped binary, etc.).
+//  1. `Version` — set at link time by CI's `-ldflags -X`. Always wins when
+//     non-empty. CI sets this even though the frontend dist rewrite makes
+//     the working tree "dirty" from Go's VCS-stamping perspective.
+//  2. Module version from a tagged `go install` (`info.Main.Version`).
+//  3. VCS revision embedded by `go build -buildvcs=true` (short-SHA, plus
+//     "-dirty" suffix when the working tree was modified). Useful for
+//     local dev builds that don't pass -ldflags.
+//  4. "dev" as a last resort.
 func readVersion() string {
+	if Version != "" {
+		return Version
+	}
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return "dev"
@@ -94,7 +105,7 @@ type healthResponse struct {
 func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, healthResponse{
 		OK:        true,
-		Version:   version,
+		Version:   runningVersion,
 		StartedAt: startedAt,
 	})
 }
