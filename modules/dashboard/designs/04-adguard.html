@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AdGuard DNS - The Silent Sentinel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#2622b7",
+                        "error-dim": "#b95463",
+                        "surface-container-low": "#131313",
+                        "error": "#ec7c8a",
+                        "primary": "#c0c1ff",
+                        "on-tertiary": "#4a536c",
+                        "surface-container-lowest": "#000000",
+                        "primary-fixed-dim": "#d1d0ff",
+                        "outline-variant": "#484848",
+                        "surface-dim": "#0e0e0e",
+                        "error-container": "#7f2737",
+                        "on-tertiary-fixed": "#2f384f",
+                        "secondary-fixed": "#d4e4fa",
+                        "on-secondary": "#122131",
+                        "surface-variant": "#252626",
+                        "on-error": "#490013",
+                        "inverse-primary": "#494bd7",
+                        "on-background": "#e7e5e4",
+                        "tertiary-dim": "#c0c9e6",
+                        "secondary": "#909fb4",
+                        "primary-fixed": "#e1e0ff",
+                        "surface-tint": "#c0c1ff",
+                        "secondary-container": "#2e3c4e",
+                        "inverse-on-surface": "#565554",
+                        "background": "#0e0e0e",
+                        "on-secondary-container": "#b1c0d6",
+                        "surface-container-high": "#1f2020",
+                        "primary-dim": "#b0b2ff",
+                        "tertiary-container": "#ced6f5",
+                        "primary-container": "#2f2ebe",
+                        "surface-bright": "#2c2c2c",
+                        "secondary-fixed-dim": "#c6d6ec",
+                        "on-primary-fixed-variant": "#4647d3",
+                        "tertiary-fixed": "#ced6f5",
+                        "outline": "#767575",
+                        "surface-container-highest": "#252626",
+                        "on-error-container": "#ff97a3",
+                        "on-tertiary-fixed-variant": "#4b546d",
+                        "tertiary": "#dee5ff",
+                        "on-tertiary-container": "#424a63",
+                        "on-surface-variant": "#acabaa",
+                        "inverse-surface": "#fcf8f8",
+                        "tertiary-fixed-dim": "#c0c9e6",
+                        "on-primary-container": "#ccccff",
+                        "surface": "#0e0e0e",
+                        "surface-container": "#191a1a",
+                        "secondary-dim": "#909fb4",
+                        "on-primary": "#2724b8",
+                        "on-surface": "#e7e5e4",
+                        "on-secondary-fixed-variant": "#4e5d6f",
+                        "on-secondary-fixed": "#324052"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0e0e0e; }
+        ::-webkit-scrollbar-thumb { background: #252626; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar Shell -->
+<aside class="flex flex-col h-full fixed left-0 top-0 z-40 bg-[#131313] w-64 border-none">
+<div class="px-6 py-8">
+<h1 class="text-[#e7e5e4] font-black text-xl tracking-tighter">SENTINEL OS</h1>
+<p class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant mt-1">RPi Router v2.4</p>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Navigation Mapping from JSON -->
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="vpn_lock">vpn_lock</span> VPN Tunnels
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="lan">lan</span> VPN Pools
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="devices">devices</span> Clients
+            </a>
+<!-- Active State Mapping: AdGuard DNS -->
+<a class="bg-[#191a1a] text-[#c0c1ff] border-r-2 border-[#6366f1] flex items-center gap-3 px-6 py-3 font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span> AdGuard DNS
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span> Traffic
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="security_update_good">security_update_good</span> Firewall &amp; PBR
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="speed">speed</span> QoS
+            </a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span> System
+            </a>
+</nav>
+<div class="mt-auto border-t border-outline-variant/10 px-6 py-6">
+<a class="text-[#9ca3af] flex items-center gap-3 hover:text-[#e7e5e4] transition-all font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span> Logout
+            </a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-8 py-4 bg-[#0e0e0e] border-b border-[#1f2020]">
+<div class="flex items-center gap-4">
+<span class="text-primary font-mono text-sm tracking-tight">/ADGUARD-DNS/NODE-01</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="font-mono text-xs text-on-surface-variant uppercase">Filtering Active</span>
+</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="monitor_heart">monitor_heart</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="network_check">network_check</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="settings">settings</span>
+</div>
+</div>
+</header>
+<div class="p-8 space-y-8 max-w-[1600px] mx-auto">
+<!-- Hero Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-low p-6 flex flex-col gap-1 border-none group hover:bg-surface-container transition-colors">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Total Queries (24h)</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[2.25rem] font-bold text-on-surface leading-none">184,392</span>
+<span class="text-xs font-mono text-emerald-500">+12.4%</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 flex flex-col gap-1 border-none group hover:bg-surface-container transition-colors">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Blocked Requests</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[2.25rem] font-bold text-error leading-none">34.2%</span>
+<span class="text-xs font-mono text-on-surface-variant">63,062 total</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 flex flex-col gap-1 border-none group hover:bg-surface-container transition-colors">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Safe Search Status</span>
+<div class="flex items-center gap-3 mt-1">
+<span class="px-3 py-1 bg-primary-container/30 text-primary text-[0.6875rem] font-bold tracking-widest uppercase">Enabled</span>
+<span class="text-xs font-mono text-on-surface-variant">Strict Filtering</span>
+</div>
+</div>
+</div>
+<!-- Query Volume Chart & Top Blocked -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Line Chart Module -->
+<div class="lg:col-span-2 bg-surface-container-low p-8 relative overflow-hidden">
+<div class="flex justify-between items-center mb-8">
+<h2 class="font-['Inter'] text-sm font-bold tracking-tight uppercase">Query Density (24h)</h2>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-0.5 bg-primary"></span>
+<span class="text-[0.625rem] font-mono text-on-surface-variant">Allowed</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-0.5 bg-error"></span>
+<span class="text-[0.625rem] font-mono text-on-surface-variant">Blocked</span>
+</div>
+</div>
+</div>
+<!-- Mock Sparkline Visual -->
+<div class="h-48 flex items-end gap-[2px]">
+<!-- Iterative bars to simulate a high-density line feel -->
+<div class="flex-1 bg-primary/20 h-[30%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[80%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[45%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[70%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[60%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[85%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[40%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[90%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[75%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[75%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[90%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[95%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+<div class="absolute inset-x-0 bottom-0 bg-error h-[30%]"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[80%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[80%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+<div class="absolute inset-x-0 bottom-0 bg-error h-[25%]"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[65%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[70%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[50%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[85%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[45%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[60%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[40%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[75%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+<div class="absolute inset-x-0 bottom-0 bg-error h-[40%]"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[55%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[80%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<div class="flex-1 bg-primary/20 h-[30%] relative group">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-[80%] opacity-40 group-hover:opacity-100 transition-opacity"></div>
+</div>
+<!-- ... (truncated for space, but visual pattern established) -->
+</div>
+<div class="mt-4 flex justify-between font-mono text-[0.625rem] text-on-surface-variant">
+<span>00:00</span>
+<span>06:00</span>
+<span>12:00</span>
+<span>18:00</span>
+<span>23:59</span>
+</div>
+</div>
+<!-- Top Blocked Module -->
+<div class="bg-surface-container-low p-8">
+<h2 class="font-['Inter'] text-sm font-bold tracking-tight uppercase mb-6">Top Blocked Domains</h2>
+<div class="space-y-5">
+<div class="space-y-1">
+<div class="flex justify-between font-mono text-[0.6875rem]">
+<span class="text-on-surface truncate">graph.facebook.com</span>
+<span class="text-error-dim">14,203</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-error-dim" style="width: 92%"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-mono text-[0.6875rem]">
+<span class="text-on-surface truncate">doubleclick.net</span>
+<span class="text-error-dim">11,844</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-error-dim" style="width: 78%"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-mono text-[0.6875rem]">
+<span class="text-on-surface truncate">app-measurement.com</span>
+<span class="text-error-dim">9,102</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-error-dim" style="width: 60%"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-mono text-[0.6875rem]">
+<span class="text-on-surface truncate">tracking.vungle.com</span>
+<span class="text-error-dim">5,321</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-error-dim" style="width: 35%"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-mono text-[0.6875rem]">
+<span class="text-on-surface truncate">crashlytics.com</span>
+<span class="text-error-dim">4,890</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-error-dim" style="width: 32%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Query Stream Table -->
+<div class="bg-surface-container-lowest overflow-hidden">
+<div class="px-8 py-6 bg-surface-container flex justify-between items-center border-none">
+<h2 class="font-['Inter'] text-sm font-bold tracking-tight uppercase">Real-Time Query Stream</h2>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1.5 bg-surface-dim border border-outline-variant/10">
+<span class="material-symbols-outlined text-sm text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs font-mono w-48 text-on-surface placeholder:text-on-surface-variant/40" placeholder="Filter domain or client..." type="text"/>
+</div>
+<button class="bg-surface-container-high hover:bg-surface-variant px-4 py-1.5 text-[0.625rem] font-bold uppercase tracking-widest text-on-surface transition-colors">Clear Logs</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant/5">
+<tr>
+<th class="px-8 py-4 font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Time</th>
+<th class="px-8 py-4 font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Client</th>
+<th class="px-8 py-4 font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Domain</th>
+<th class="px-8 py-4 font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Status</th>
+<th class="px-8 py-4 font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Upstream</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">14:28:45.02</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-primary">192.168.1.104 <span class="opacity-40 ml-1">(MacBook-Pro)</span></td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface">api.github.com</td>
+<td class="px-8 py-4">
+<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[0.625rem] font-mono uppercase">Processed</span>
+</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">tls://dns.cloudflare.com</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">14:28:44.89</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-primary">192.168.1.52 <span class="opacity-40 ml-1">(iPhone-15)</span></td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-error-dim">telemetry.icloud-analysis.com</td>
+<td class="px-8 py-4">
+<span class="px-2 py-0.5 bg-error-container/20 text-error-dim text-[0.625rem] font-mono uppercase">Blocked</span>
+</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">Blacklist: OISD-Full</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">14:28:43.15</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-primary">192.168.1.1 <span class="opacity-40 ml-1">(Router-Local)</span></td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface">time.apple.com</td>
+<td class="px-8 py-4">
+<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[0.625rem] font-mono uppercase">Processed</span>
+</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">tls://dns.google</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">14:28:42.99</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-primary">192.168.1.205 <span class="opacity-40 ml-1">(Apple-TV)</span></td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-error-dim">ad.yieldmanager.com</td>
+<td class="px-8 py-4">
+<span class="px-2 py-0.5 bg-error-container/20 text-error-dim text-[0.625rem] font-mono uppercase">Blocked</span>
+</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">Blacklist: AdGuard-DNS</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">14:28:42.50</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-primary">192.168.1.104 <span class="opacity-40 ml-1">(MacBook-Pro)</span></td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface">slack.com</td>
+<td class="px-8 py-4">
+<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[0.625rem] font-mono uppercase">Processed</span>
+</td>
+<td class="px-8 py-4 font-mono text-[0.6875rem] text-on-surface-variant">tls://dns.cloudflare.com</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-8 py-4 bg-surface-container-low flex justify-center">
+<button class="font-['Inter'] text-[0.625rem] uppercase tracking-widest font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2">
+                        Load Previous Entries <span class="material-symbols-outlined text-sm" data-icon="keyboard_double_arrow_down">keyboard_double_arrow_down</span>
+</button>
+</div>
+</div>
+<!-- Privacy & Config Glassmorphism Card -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="p-8 bg-surface-variant/70 backdrop-blur-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="privacy_tip">privacy_tip</span>
+<h3 class="font-['Inter'] text-sm font-bold tracking-tight uppercase">Privacy Protections</h3>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="flex flex-col gap-1">
+<span class="text-[0.625rem] font-mono text-on-surface-variant uppercase">Encrypted DNS</span>
+<span class="text-xs font-bold text-emerald-500">DoH / DoT Active</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[0.625rem] font-mono text-on-surface-variant uppercase">Logs Retention</span>
+<span class="text-xs font-bold text-on-surface">24 Hours (Ephemeral)</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[0.625rem] font-mono text-on-surface-variant uppercase">Tracking Protection</span>
+<span class="text-xs font-bold text-on-surface">Ultra Level</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[0.625rem] font-mono text-on-surface-variant uppercase">IP Anonymization</span>
+<span class="text-xs font-bold text-emerald-500">Masked</span>
+</div>
+</div>
+</div>
+<div class="p-8 bg-surface-container-low flex flex-col justify-center gap-4">
+<h3 class="font-['Inter'] text-sm font-bold tracking-tight uppercase">System Health</h3>
+<div class="flex items-center gap-6">
+<div class="flex-1 space-y-2">
+<div class="flex justify-between font-mono text-[0.625rem] text-on-surface-variant uppercase">
+<span>Memory (DNS Cache)</span>
+<span>124MB / 512MB</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-primary" style="width: 24%"></div>
+</div>
+</div>
+<div class="w-px h-12 bg-outline-variant/20"></div>
+<div class="flex-1 space-y-2">
+<div class="flex justify-between font-mono text-[0.625rem] text-on-surface-variant uppercase">
+<span>Response Time</span>
+<span>14ms Avg</span>
+</div>
+<div class="h-1 bg-surface-container-highest">
+<div class="h-full bg-emerald-500" style="width: 15%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Hidden as per mandate for Details screens) -->
+</body></html>
