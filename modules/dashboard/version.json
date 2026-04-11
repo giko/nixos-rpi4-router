@@ -1,5 +1,5 @@
 {
-  "version": "bootstrap",
-  "url": "",
-  "hash": ""
+  "version": "20260411-08edd0c",
+  "url": "https://github.com/giko/nixos-rpi4-router/releases/download/dashboard-20260411-08edd0c/dashboard",
+  "hash": "sha256-8ssXIp0epHEpZnMv89tB0p/HpQgaJocTzIdvHfMjSZI="
 }
