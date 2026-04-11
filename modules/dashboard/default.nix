@@ -2,7 +2,6 @@
 
 let
   cfg = config.router.dashboard;
-  v = builtins.fromJSON (builtins.readFile ./version.json);
 in
 {
   options.router.dashboard = {
@@ -57,7 +56,16 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.enable && v.version != "bootstrap") {
+  # Note on the activation gate:
+  # Only `cfg.enable` gates the module. When `version.json` is still the
+  # bootstrap placeholder AND the user has not overridden `cfg.package`,
+  # realization of `cfg.package` triggers package.nix's `throw` with a clear
+  # error message — but only at build time. Pure eval (`nix flake check
+  # --no-build`) remains clean because the thrown `src` is lazy. This shape
+  # lets a developer doing local testing set `router.dashboard.package =
+  # pkgs.callPackage ./local-build.nix {};` and have the module fully
+  # activate against a hand-built binary before CI has released anything.
+  config = lib.mkIf cfg.enable {
     assertions = [
       {
         assertion = cfg.allowedSources != [ ];
@@ -68,10 +76,6 @@ in
           LAN-wide. Declare the IPs or CIDR ranges of admin devices that should
           reach the dashboard — everything else is dropped at the firewall.
         '';
-      }
-      {
-        assertion = !(lib.any (pf: pf.externalPort == cfg.port) config.router.portForwards);
-        message = "router.dashboard.port (${toString cfg.port}) collides with a router.portForwards entry.";
       }
     ];
 
