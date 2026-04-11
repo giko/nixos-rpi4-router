@@ -1,0 +1,13 @@
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+
+# Backend build artifacts
+backend/dashboard
+backend/cover.out
+
+# Embedded frontend — the checked-in placeholder stays, but CI overwrites it.
+# We only ignore files other than index.html so the placeholder survives.
+backend/internal/spa/dist/assets/
+backend/internal/spa/dist/*.svg
+backend/internal/spa/dist/*.ico
