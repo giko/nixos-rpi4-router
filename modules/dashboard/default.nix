@@ -56,16 +56,17 @@ in
     };
   };
 
-  # Note on the activation gate:
-  # Only `cfg.enable` gates the module. When `version.json` is still the
-  # bootstrap placeholder AND the user has not overridden `cfg.package`,
-  # realization of `cfg.package` triggers package.nix's `throw` with a clear
-  # error message — but only at build time. Pure eval (`nix flake check
-  # --no-build`) remains clean because the thrown `src` is lazy. This shape
-  # lets a developer doing local testing set `router.dashboard.package =
-  # pkgs.callPackage ./local-build.nix {};` and have the module fully
-  # activate against a hand-built binary before CI has released anything.
-  config = lib.mkIf cfg.enable {
+  # Activation gate: enabled AND the resolved package is not the bootstrap
+  # placeholder. The default package (./package.nix) inherits its version
+  # from version.json, so in bootstrap state `cfg.package.version` equals
+  # "bootstrap" and the gate blocks activation — a silent no-op that lets
+  # users pull a branch whose CI hasn't yet bumped version.json without
+  # tripping package.nix's `throw`. A local-dev override
+  # (`router.dashboard.package = pkgs.callPackage ./local.nix {}`) uses
+  # the overridden version string (not "bootstrap"), so the gate passes
+  # and the module activates against the hand-built binary. Reading
+  # `cfg.package.version` does not force `src`, so pure eval stays clean.
+  config = lib.mkIf (cfg.enable && (cfg.package.version or "") != "bootstrap") {
     assertions = [
       {
         assertion = cfg.allowedSources != [ ];
@@ -130,11 +131,19 @@ in
         MemoryDenyWriteExecute = true;
         SystemCallArchitectures = "native";
 
+        # The `-` prefix makes each path optional: systemd silently skips
+        # any that don't exist at service start. Required because:
+        #   - /run/wg-pool-health only exists when router.pbr.pooledRules
+        #     is non-empty (it's the RuntimeDirectory of wg-pool-health.service).
+        #   - /var/lib/dnsmasq only exists when services.dnsmasq is enabled.
+        #   - /sys/devices/virtual/thermal may be absent on non-RPi4 hosts.
+        # Without the prefix, systemd refuses to start the unit if any
+        # listed path is missing.
         ReadOnlyPaths = [
-          "/run/wg-pool-health"
-          "/var/lib/dnsmasq"
-          "/sys/class/thermal"
-          "/sys/devices/virtual/thermal"
+          "-/run/wg-pool-health"
+          "-/var/lib/dnsmasq"
+          "-/sys/class/thermal"
+          "-/sys/devices/virtual/thermal"
         ];
       };
     };
