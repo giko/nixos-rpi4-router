@@ -13,6 +13,7 @@
       pbr         = import ./modules/pbr.nix;
       dns         = import ./modules/dns.nix;
       dhcp        = import ./modules/dhcp.nix;
+      dashboard   = import ./modules/dashboard;
       qos         = import ./modules/qos.nix;
       upnp        = import ./modules/upnp.nix;
       performance = import ./modules/performance.nix;
