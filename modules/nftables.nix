@@ -75,6 +75,33 @@ let
         }''
   ) domainSetNames;
 
+  # Mangle: pool chain initial content (optimistic — assumes all tunnels
+  # healthy). The wg-pool-health watchdog rewrites this chain atomically
+  # as tunnels come and go.
+  allTunnelMeta = routerLib.allMeta cfg.wireguard.tunnels;
+  lookupFwmark = tName:
+    (lib.findFirst
+      (m: m.name == tName)
+      (builtins.throw "pooledRules references unknown tunnel: ${tName}")
+      allTunnelMeta).fwmarkHex;
+  poolInitLines = lib.concatMapStringsSep "\n            " (rule:
+    let
+      poolTunnels = cfg.pbr.pools.${rule.pool};
+      indexedMarks = lib.imap0 (i: t: "${toString i} : ${lookupFwmark t}") poolTunnels;
+      mapStr = lib.concatStringsSep ", " indexedMarks;
+      srcSet = lib.concatStringsSep ", " rule.sources;
+      n = toString (builtins.length poolTunnels);
+    in
+    ''ct state new ip saddr { ${srcSet} } meta mark set numgen inc mod ${n} map { ${mapStr} }''
+  ) cfg.pbr.pooledRules;
+
+  # Union of all source IPs across all pooled rules — used for the
+  # failsafe drop rule in prerouting (catches packets from pooled clients
+  # that somehow reached the end of the pool chain without getting a mark,
+  # e.g. if the watchdog flushed pool without repopulating).
+  pooledSources = lib.unique (builtins.concatLists (map (r: r.sources) cfg.pbr.pooledRules));
+  pooledSourcesSet = lib.concatStringsSep ", " pooledSources;
+
   # Drop all forwarded traffic from these MACs (internet + VPN + cross-subnet).
   # Intra-subnet traffic is unaffected since it is not routed through forward.
   blockMacLines = lib.concatMapStringsSep "\n          " (mac:
@@ -277,10 +304,16 @@ in
           }
         }
 
-        ${lib.optionalString (cfg.pbr.sourceRules != [] || cfg.pbr.domainSets != {} || cfg.pbr.sourceDomainRules != []) ''
+        ${lib.optionalString (cfg.pbr.sourceRules != [] || cfg.pbr.domainSets != {} || cfg.pbr.sourceDomainRules != [] || cfg.pbr.pooledRules != []) ''
         table ip mangle {
 
           ${domainSetDecls}
+
+          ${lib.optionalString (cfg.pbr.pooledRules != []) ''
+          chain pool {
+            ${poolInitLines}
+          }
+          ''}
 
           chain prerouting {
             type filter hook prerouting priority mangle; policy accept;
@@ -290,6 +323,10 @@ in
             ct state established,related meta mark set ct mark return
 
             ${sourcePbrLines}
+
+            ${lib.optionalString (cfg.pbr.pooledRules != []) ''jump pool''}
+
+            ${lib.optionalString (cfg.pbr.pooledRules != []) ''ct state new ip saddr { ${pooledSourcesSet} } meta mark 0 counter drop''}
 
             ${domainPbrLines}
 
