@@ -171,6 +171,29 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           for attempt in 1 2 3; do
             git fetch origin main
+            LATEST=$(git rev-parse origin/main)
+
+            # Inner race guard: the outer publish-eligibility check runs
+            # before the build, so there's a window (build + upload +
+            # verify) during which a dashboard-source commit could land
+            # on main. Without this recheck, `git reset --hard` would
+            # pick up that newer source and we'd write our older-binary
+            # version.json on top of it — creating a revision that's
+            # briefly inconsistent (newer source, older pinned binary).
+            # The queued next build will fix it, but pinning the
+            # inconsistent revision breaks deployments in the meantime.
+            if [ "$LATEST" != "$GITHUB_SHA" ]; then
+              CHANGED=$(git diff --name-only "$GITHUB_SHA..$LATEST" -- \
+                modules/dashboard/frontend \
+                modules/dashboard/backend || true)
+              if [ -n "$CHANGED" ]; then
+                echo "origin/main advanced with dashboard-source changes during build:"
+                echo "$CHANGED"
+                echo "skipping version.json bump — the queued next build will handle it"
+                exit 0
+              fi
+            fi
+
             git reset --hard origin/main
             cat > modules/dashboard/version.json <<EOF
           {
@@ -179,6 +202,18 @@ jobs:
             "hash": "$HASH"
           }
           EOF
+
+            # Rerun idempotency: if this is a workflow_dispatch rerun
+            # for the same SHA (same day → same VERSION → same URL and
+            # HASH), version.json is already correct and `git commit`
+            # would fail with "nothing to commit". Treat that as a
+            # success — the release asset is already pinned where it
+            # should be.
+            if git diff --quiet -- modules/dashboard/version.json; then
+              echo "version.json already matches this release — idempotent success"
+              exit 0
+            fi
+
             git add modules/dashboard/version.json
             git commit -m "dashboard: release $VERSION"
             if git push origin main; then
