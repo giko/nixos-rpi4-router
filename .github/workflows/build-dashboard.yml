@@ -50,7 +50,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          cache-dependency-path: modules/dashboard/backend/go.sum
+          # Cache on go.mod because the backend is stdlib-only and
+          # `go build` never produces a go.sum. Using go.sum as the
+          # cache key would fail in setup-go before the build starts.
+          cache-dependency-path: modules/dashboard/backend/go.mod
 
       - name: Compute version
         id: meta
@@ -83,7 +86,43 @@ jobs:
           HASH="sha256-$(openssl dgst -sha256 -binary dashboard | base64)"
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
 
+      - name: Publish-eligibility check (before releasing anything)
+        run: |
+          set -eu
+          # Only main-branch runs may publish. workflow_dispatch from a
+          # feature branch would otherwise orphan a release tied to a
+          # non-main commit.
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::build-dashboard refuses to publish from ref $GITHUB_REF (only refs/heads/main)" >&2
+            exit 1
+          fi
+          git fetch origin main
+          LATEST=$(git rev-parse origin/main)
+          if [ "$LATEST" = "$GITHUB_SHA" ]; then
+            echo "origin/main is still at $GITHUB_SHA — publishing is safe"
+            exit 0
+          fi
+          # main has moved since we started. If ANY of the intervening
+          # commits touched dashboard source paths, our binary is stale
+          # and the queued next build (concurrency serializes) will
+          # produce a newer one. Skip publishing to avoid orphaning a
+          # release that would get immediately superseded.
+          CHANGED=$(git diff --name-only "$GITHUB_SHA..$LATEST" -- \
+            modules/dashboard/frontend \
+            modules/dashboard/backend || true)
+          if [ -n "$CHANGED" ]; then
+            echo "origin/main has moved past our build commit ($GITHUB_SHA → $LATEST)"
+            echo "intervening dashboard-source changes:"
+            echo "$CHANGED"
+            echo "skipping publish — the queued next build will produce a fresher release"
+            # Mark downstream steps as skipped via a job-level output.
+            echo "SKIP_PUBLISH=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "origin/main moved but no dashboard-source changes in the interval — safe to publish"
+
       - name: Upload release asset
+        if: env.SKIP_PUBLISH != 'true'
         id: release
         uses: softprops/action-gh-release@v2
         with:
@@ -93,12 +132,14 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Resolve release asset URL
+        if: env.SKIP_PUBLISH != 'true'
         id: asset
         run: |
           URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/dashboard"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Verify published asset matches built hash
+        if: env.SKIP_PUBLISH != 'true'
         env:
           URL: ${{ steps.asset.outputs.url }}
           EXPECTED: ${{ steps.hash.outputs.hash }}
@@ -118,7 +159,8 @@ jobs:
           fi
           echo "verify: hash matches expected ($EXPECTED)"
 
-      - name: Commit version.json (skip if main moved past our SHA)
+      - name: Commit version.json bump
+        if: env.SKIP_PUBLISH != 'true'
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           URL: ${{ steps.asset.outputs.url }}
@@ -129,20 +171,6 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           for attempt in 1 2 3; do
             git fetch origin main
-
-            # Race guard: if another dashboard source push landed on main
-            # while we were building, DO NOT bump version.json. The queued
-            # next build will produce a binary that matches the newer
-            # source and bump version.json correctly. Our asset is
-            # orphaned but harmless (cleanable via `gh release delete`).
-            LATEST=$(git rev-parse origin/main)
-            if [ "$LATEST" != "$GITHUB_SHA" ]; then
-              echo "origin/main has moved past our build commit ($GITHUB_SHA)"
-              echo "  current origin/main: $LATEST"
-              echo "  skipping version.json bump — the queued next build will handle it"
-              exit 0
-            fi
-
             git reset --hard origin/main
             cat > modules/dashboard/version.json <<EOF
           {
