@@ -52,24 +52,36 @@ jobs:
           go-version: '1.22'
           cache-dependency-path: modules/dashboard/backend/go.sum
 
+      - name: Compute version
+        id: meta
+        run: |
+          VERSION="$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=dashboard-$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Cross-build dashboard binary for aarch64-linux
         working-directory: modules/dashboard/backend
         env:
           GOOS: linux
           GOARCH: arm64
           CGO_ENABLED: '0'
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          go build -ldflags='-s -w' -o dashboard ./cmd/dashboard
+          # Embed the release version via -X linker flag so /api/health
+          # reports the actual release identifier. Without this, Go's
+          # BuildInfo-based fallback would see the CI-rewritten dist/
+          # subtree as a dirty worktree and stamp every build as
+          # "<sha>-dirty".
+          go build \
+            -ldflags="-s -w -X github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/server.Version=$VERSION" \
+            -o dashboard ./cmd/dashboard
 
-      - name: Compute version and hash
-        id: meta
+      - name: Compute asset hash
+        id: hash
+        working-directory: modules/dashboard/backend
         run: |
-          VERSION="$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
-          cd modules/dashboard/backend
           HASH="sha256-$(openssl dgst -sha256 -binary dashboard | base64)"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
-          echo "tag=dashboard-$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Upload release asset
         id: release
@@ -86,17 +98,51 @@ jobs:
           URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/dashboard"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
-      - name: Commit version.json with rebase+retry
+      - name: Verify published asset matches built hash
+        env:
+          URL: ${{ steps.asset.outputs.url }}
+          EXPECTED: ${{ steps.hash.outputs.hash }}
+        run: |
+          set -eu
+          # Verify BEFORE touching main. If the release asset is corrupt
+          # or GitHub served a different blob than we uploaded, fail the
+          # workflow red while main is still clean. No release-to-main
+          # inconsistency can land.
+          curl -fsSL -o /tmp/dashboard.verify "$URL"
+          ACTUAL="sha256-$(openssl dgst -sha256 -binary /tmp/dashboard.verify | base64)"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::verify mismatch — release asset does not match locally-built hash" >&2
+            echo "expected: $EXPECTED" >&2
+            echo "actual:   $ACTUAL"   >&2
+            exit 1
+          fi
+          echo "verify: hash matches expected ($EXPECTED)"
+
+      - name: Commit version.json (skip if main moved past our SHA)
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           URL: ${{ steps.asset.outputs.url }}
-          HASH: ${{ steps.meta.outputs.hash }}
+          HASH: ${{ steps.hash.outputs.hash }}
         run: |
           set -eu
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           for attempt in 1 2 3; do
             git fetch origin main
+
+            # Race guard: if another dashboard source push landed on main
+            # while we were building, DO NOT bump version.json. The queued
+            # next build will produce a binary that matches the newer
+            # source and bump version.json correctly. Our asset is
+            # orphaned but harmless (cleanable via `gh release delete`).
+            LATEST=$(git rev-parse origin/main)
+            if [ "$LATEST" != "$GITHUB_SHA" ]; then
+              echo "origin/main has moved past our build commit ($GITHUB_SHA)"
+              echo "  current origin/main: $LATEST"
+              echo "  skipping version.json bump — the queued next build will handle it"
+              exit 0
+            fi
+
             git reset --hard origin/main
             cat > modules/dashboard/version.json <<EOF
           {
@@ -116,19 +162,3 @@ jobs:
           done
           echo "::error::version.json push failed after 3 attempts" >&2
           exit 1
-
-      - name: Verify published asset matches committed hash
-        env:
-          URL: ${{ steps.asset.outputs.url }}
-          EXPECTED: ${{ steps.meta.outputs.hash }}
-        run: |
-          set -eu
-          curl -fsSL -o /tmp/dashboard.verify "$URL"
-          ACTUAL="sha256-$(openssl dgst -sha256 -binary /tmp/dashboard.verify | base64)"
-          if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "::error::verify mismatch" >&2
-            echo "expected: $EXPECTED" >&2
-            echo "actual:   $ACTUAL"   >&2
-            exit 1
-          fi
-          echo "verify: hash matches expected ($EXPECTED)"
