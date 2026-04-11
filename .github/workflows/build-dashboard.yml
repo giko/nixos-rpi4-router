@@ -138,26 +138,27 @@ jobs:
           URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/dashboard"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
-      - name: Verify published asset matches built hash
-        if: env.SKIP_PUBLISH != 'true'
-        env:
-          URL: ${{ steps.asset.outputs.url }}
-          EXPECTED: ${{ steps.hash.outputs.hash }}
-        run: |
-          set -eu
-          # Verify BEFORE touching main. If the release asset is corrupt
-          # or GitHub served a different blob than we uploaded, fail the
-          # workflow red while main is still clean. No release-to-main
-          # inconsistency can land.
-          curl -fsSL -o /tmp/dashboard.verify "$URL"
-          ACTUAL="sha256-$(openssl dgst -sha256 -binary /tmp/dashboard.verify | base64)"
-          if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "::error::verify mismatch — release asset does not match locally-built hash" >&2
-            echo "expected: $EXPECTED" >&2
-            echo "actual:   $ACTUAL"   >&2
-            exit 1
-          fi
-          echo "verify: hash matches expected ($EXPECTED)"
+      # No post-upload verify step.
+      #
+      # Why: verifying the asset by re-downloading and re-hashing is
+      # redundant with Nix's own verification. Every consumer running
+      # `nixos-rebuild switch` fetches the URL in version.json via
+      # `fetchurl { url; hash; }` which hash-checks the downloaded blob
+      # on its way into the store. A mismatch is a hard Nix error at
+      # deploy time, not a silent bad deploy.
+      #
+      # The earlier verify step also suffered from a CDN propagation
+      # race: softprops/action-gh-release@v2 uploads via GitHub's REST
+      # API (transactional — success means the asset IS in object
+      # storage), but the public `/releases/download/` endpoint lags by
+      # a few seconds on fresh releases, so a curl immediately after
+      # upload could 404. Removing the CI-side check also removes the
+      # race.
+      #
+      # Residual risk: a corrupted or tampered asset lands on main's
+      # version.json, and every Pi deploy fails with a Nix hash mismatch
+      # until a new release is cut. Annoying but visible — never a
+      # silent wrong-binary deploy.
 
       - name: Commit version.json bump
         if: env.SKIP_PUBLISH != 'true'
