@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Silent Sentinel - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#2622b7",
+                        "error-dim": "#b95463",
+                        "surface-container-low": "#131313",
+                        "error": "#ec7c8a",
+                        "primary": "#c0c1ff",
+                        "on-tertiary": "#4a536c",
+                        "surface-container-lowest": "#000000",
+                        "primary-fixed-dim": "#d1d0ff",
+                        "outline-variant": "#484848",
+                        "surface-dim": "#0e0e0e",
+                        "error-container": "#7f2737",
+                        "on-tertiary-fixed": "#2f384f",
+                        "secondary-fixed": "#d4e4fa",
+                        "on-secondary": "#122131",
+                        "surface-variant": "#252626",
+                        "on-error": "#490013",
+                        "inverse-primary": "#494bd7",
+                        "on-background": "#e7e5e4",
+                        "tertiary-dim": "#c0c9e6",
+                        "secondary": "#909fb4",
+                        "primary-fixed": "#e1e0ff",
+                        "surface-tint": "#c0c1ff",
+                        "secondary-container": "#2e3c4e",
+                        "inverse-on-surface": "#565554",
+                        "background": "#0e0e0e",
+                        "on-secondary-container": "#b1c0d6",
+                        "surface-container-high": "#1f2020",
+                        "primary-dim": "#b0b2ff",
+                        "tertiary-container": "#ced6f5",
+                        "primary-container": "#2f2ebe",
+                        "surface-bright": "#2c2c2c",
+                        "secondary-fixed-dim": "#c6d6ec",
+                        "on-primary-fixed-variant": "#4647d3",
+                        "tertiary-fixed": "#ced6f5",
+                        "outline": "#767575",
+                        "surface-container-highest": "#252626",
+                        "on-error-container": "#ff97a3",
+                        "on-tertiary-fixed-variant": "#4b546d",
+                        "tertiary": "#dee5ff",
+                        "on-tertiary-container": "#424a63",
+                        "on-surface-variant": "#acabaa",
+                        "inverse-surface": "#fcf8f8",
+                        "tertiary-fixed-dim": "#c0c9e6",
+                        "on-primary-container": "#ccccff",
+                        "surface": "#0e0e0e",
+                        "surface-container": "#191a1a",
+                        "secondary-dim": "#909fb4",
+                        "on-primary": "#2724b8",
+                        "on-surface": "#e7e5e4",
+                        "on-secondary-fixed-variant": "#4e5d6f",
+                        "on-secondary-fixed": "#324052"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 1.25rem;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0e0e0e;
+            color: #e7e5e4;
+        }
+        .technical-value {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="flex flex-col h-full fixed left-0 top-0 z-40 bg-[#131313] w-64 border-r border-[#1f2020]">
+<div class="p-6">
+<h1 class="text-[#e7e5e4] font-black tracking-tighter text-xl">SENTINEL OS</h1>
+<p class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">RPi Router v2.4</p>
+</div>
+<nav class="flex-1 mt-4 space-y-1">
+<!-- Active Tab: Dashboard -->
+<a class="bg-[#191a1a] text-[#c0c1ff] border-r-2 border-[#6366f1] flex items-center gap-3 px-6 py-3 transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="vpn_lock">vpn_lock</span>
+<span>VPN Tunnels</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="lan">lan</span>
+<span>VPN Pools</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="devices">devices</span>
+<span>Clients</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span>AdGuard DNS</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span>Traffic</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="security_update_good">security_update_good</span>
+<span>Firewall &amp; PBR</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="speed">speed</span>
+<span>QoS</span>
+</a>
+<a class="text-[#9ca3af] flex items-center gap-3 px-6 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>
+<span>System</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-[#1f2020] p-4">
+<a class="text-[#9ca3af] flex items-center gap-3 px-4 py-3 hover:bg-[#1f2020] hover:text-[#e7e5e4] transition-all duration-200 ease-in-out font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 bg-[#0e0e0e] min-h-screen">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-8 py-4 bg-[#0e0e0e] sticky top-0 z-30">
+<div class="flex items-center gap-4">
+<span class="text-on-surface-variant font-mono text-xs tracking-tight uppercase">Dashboard / Overview</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-lg">
+<div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+<span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-tighter">System Healthy</span>
+</div>
+<div class="flex items-center gap-4 text-[#9ca3af]">
+<span class="material-symbols-outlined hover:text-[#e7e5e4] cursor-pointer" data-icon="monitor_heart">monitor_heart</span>
+<span class="material-symbols-outlined hover:text-[#e7e5e4] cursor-pointer" data-icon="network_check">network_check</span>
+<span class="material-symbols-outlined hover:text-[#e7e5e4] cursor-pointer" data-icon="settings">settings</span>
+</div>
+</div>
+</header>
+<div class="px-8 pb-12">
+<!-- Bento Layout Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Critical Health Grid -->
+<section class="col-span-12 grid grid-cols-4 gap-4">
+<!-- WAN Status -->
+<div class="bg-surface-container-low p-4 flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">WAN Uplink</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+<div class="technical-value text-xl font-bold text-on-surface">CONNECTED</div>
+<div class="technical-value text-[10px] text-on-surface-variant">IP: 192.168.100.42</div>
+</div>
+<!-- DNS Status -->
+<div class="bg-surface-container-low p-4 flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">DNS Resolver</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+<div class="technical-value text-xl font-bold text-on-surface">ACTIVE</div>
+<div class="technical-value text-[10px] text-on-surface-variant">ADGUARD / UNBOUND</div>
+</div>
+<!-- VPN Pools -->
+<div class="bg-surface-container-low p-4 flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">VPN Pools</span>
+<div class="w-2 h-2 rounded-full bg-amber-500"></div>
+</div>
+<div class="technical-value text-xl font-bold text-on-surface">3 / 4 ONLINE</div>
+<div class="technical-value text-[10px] text-on-surface-variant">UK-LDN-02 STALE</div>
+</div>
+<!-- System Load -->
+<div class="bg-surface-container-low p-4 flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<span class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">System Load</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+<div class="technical-value text-xl font-bold text-on-surface">0.42 / 12%</div>
+<div class="technical-value text-[10px] text-on-surface-variant">42.4°C | 8GB RAM</div>
+</div>
+</section>
+<!-- Live Traffic Section (Main Column) -->
+<section class="col-span-8 bg-surface-container p-6">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h2 class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Network Throughput (WAN)</h2>
+<p class="technical-value text-xs text-[#c0c1ff] mt-1">Real-time RX/TX Delta</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-1 bg-[#c0c1ff]"></div>
+<span class="technical-value text-[10px] text-on-surface">RX: 42.5 Mbps</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-1 bg-secondary"></div>
+<span class="technical-value text-[10px] text-on-surface">TX: 8.2 Mbps</span>
+</div>
+</div>
+</div>
+<!-- Simulated Traffic Chart -->
+<div class="relative h-64 w-full flex items-end gap-1 px-2 overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-t from-[#191a1a] to-transparent z-10"></div>
+<!-- Abstract Visual representation of traffic bars -->
+<div class="flex-1 bg-primary-container opacity-40 h-[40%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-50 h-[55%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[48%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[85%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-60 h-[70%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[30%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-50 h-[45%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[60%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[95%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-70 h-[75%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[40%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-50 h-[55%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[48%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[82%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-60 h-[70%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[30%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-50 h-[45%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[60%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[78%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-70 h-[65%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[40%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-50 h-[55%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary-container opacity-40 h-[48%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[90%] rounded-t-sm"></div>
+</div>
+</section>
+<!-- Active Issues & Alerts (Right Side) -->
+<section class="col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container p-6">
+<h2 class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-error mb-4">Critical Alerts</h2>
+<div class="space-y-4">
+<!-- Alert 1 -->
+<div class="flex items-start gap-3 p-3 bg-error-container/20 border-l-2 border-error">
+<span class="material-symbols-outlined text-error" data-icon="warning">warning</span>
+<div>
+<p class="technical-value text-[11px] text-on-error-container font-bold">VPN TUNNEL UK HANDSHAKE STALE</p>
+<p class="technical-value text-[10px] text-on-surface-variant">Last activity: 12m 4s ago</p>
+</div>
+</div>
+<!-- Alert 2 -->
+<div class="flex items-start gap-3 p-3 bg-surface-container-high">
+<span class="material-symbols-outlined text-amber-500" data-icon="thermostat">thermostat</span>
+<div>
+<p class="technical-value text-[11px] text-on-surface font-bold">CPU TEMP &gt; 65C</p>
+<p class="technical-value text-[10px] text-on-surface-variant">Fan at 100% duty cycle</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 flex-1">
+<h2 class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant mb-4">Household Privacy</h2>
+<div class="flex items-center gap-6 mb-6">
+<div class="flex-1 text-center border-r border-outline-variant">
+<p class="technical-value text-2xl font-bold text-primary">34%</p>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">Blocks</p>
+</div>
+<div class="flex-1 text-center">
+<p class="technical-value text-2xl font-bold text-on-surface">1.4k</p>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">Blocked Ads</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="technical-value text-[10px] text-on-surface">Smart TV - Samsung</span>
+<span class="technical-value text-[10px] text-emerald-400">ENCRYPTED</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="technical-value text-[10px] text-on-surface">MacBook Pro - Work</span>
+<span class="technical-value text-[10px] text-emerald-400">VPN: US-WEST</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="technical-value text-[10px] text-on-surface">Guest WiFi</span>
+<span class="technical-value text-[10px] text-amber-500">UNRESTRICTED</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Stats Footer Row -->
+<section class="col-span-12 grid grid-cols-5 gap-6">
+<div class="bg-surface-container-high p-5 flex items-center justify-between">
+<div>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">Active Clients</p>
+<p class="technical-value text-xl font-bold">12</p>
+</div>
+<span class="material-symbols-outlined text-primary-dim" data-icon="group">group</span>
+</div>
+<div class="bg-surface-container-high p-5 flex items-center justify-between">
+<div>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">Active Tunnels</p>
+<p class="technical-value text-xl font-bold">4/4</p>
+</div>
+<span class="material-symbols-outlined text-primary-dim" data-icon="vpn_key">vpn_key</span>
+</div>
+<div class="bg-surface-container-high p-5 flex items-center justify-between">
+<div>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">DPI Inspection</p>
+<p class="technical-value text-xl font-bold">ON</p>
+</div>
+<span class="material-symbols-outlined text-primary-dim" data-icon="visibility">visibility</span>
+</div>
+<div class="bg-surface-container-high p-5 flex items-center justify-between">
+<div>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">AdGuard DNS</p>
+<p class="technical-value text-xl font-bold">STABLE</p>
+</div>
+<span class="material-symbols-outlined text-primary-dim" data-icon="shield_with_heart">shield_with_heart</span>
+</div>
+<div class="bg-surface-container-high p-5 flex items-center justify-between">
+<div>
+<p class="font-['Inter'] text-[9px] uppercase font-bold text-on-surface-variant">Uptime</p>
+<p class="technical-value text-xl font-bold">14d 2h</p>
+</div>
+<span class="material-symbols-outlined text-primary-dim" data-icon="history">history</span>
+</div>
+</section>
+<!-- Activity Log Well -->
+<section class="col-span-12 bg-surface-container-lowest p-6 rounded-lg">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-['Inter'] text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Live Connection Logs</h2>
+<span class="technical-value text-[9px] text-primary bg-primary-container/20 px-2 py-0.5 rounded">STREAMING</span>
+</div>
+<div class="space-y-1 font-mono text-[10px]">
+<div class="flex gap-4 opacity-80 py-1">
+<span class="text-on-surface-variant">[14:22:04]</span>
+<span class="text-emerald-400">ALLOW</span>
+<span class="text-on-surface">192.168.1.102 -&gt; dns.google:53 (UDP)</span>
+<span class="ml-auto text-on-surface-variant">BYPASSED ADGUARD</span>
+</div>
+<div class="flex gap-4 py-1">
+<span class="text-on-surface-variant">[14:22:01]</span>
+<span class="text-rose-400">BLOCK</span>
+<span class="text-on-surface">192.168.1.55 -&gt; telemetry.samsung.com:443 (TCP)</span>
+<span class="ml-auto text-on-surface-variant">REGEX MATCH: 'telemetry'</span>
+</div>
+<div class="flex gap-4 opacity-80 py-1">
+<span class="text-on-surface-variant">[14:21:58]</span>
+<span class="text-primary">TUNNEL</span>
+<span class="text-on-surface">192.168.1.201 -&gt; 1.1.1.1:443 (TCP)</span>
+<span class="ml-auto text-on-surface-variant">VIA WG_POOL_US_WEST</span>
+</div>
+<div class="flex gap-4 opacity-80 py-1">
+<span class="text-on-surface-variant">[14:21:55]</span>
+<span class="text-emerald-400">ALLOW</span>
+<span class="text-on-surface">192.168.1.1 -&gt; ntp.ubuntu.com:123 (UDP)</span>
+<span class="ml-auto text-on-surface-variant">CORE SYSTEM TIME</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>
