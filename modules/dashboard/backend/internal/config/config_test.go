@@ -39,3 +39,23 @@ func TestFromFlagsOverrides(t *testing.T) {
 		t.Errorf("LogLevel = %q, want debug", cfg.LogLevel)
 	}
 }
+
+func TestFromFlagsConfigFile(t *testing.T) {
+	cfg, err := FromFlags([]string{"--config-file", "/etc/dashboard/config.json"})
+	if err != nil {
+		t.Fatalf("FromFlags: %v", err)
+	}
+	if cfg.ConfigFile != "/etc/dashboard/config.json" {
+		t.Errorf("ConfigFile = %q", cfg.ConfigFile)
+	}
+}
+
+func TestFromFlagsConfigFileDefaultEmpty(t *testing.T) {
+	cfg, err := FromFlags(nil)
+	if err != nil {
+		t.Fatalf("FromFlags(nil): %v", err)
+	}
+	if cfg.ConfigFile != "" {
+		t.Errorf("ConfigFile = %q, want empty default", cfg.ConfigFile)
+	}
+}
