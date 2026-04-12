@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type response struct {
+type Response struct {
 	Data      any     `json:"data"`
 	UpdatedAt *string `json:"updated_at"`
 	Stale     bool    `json:"stale"`
@@ -20,7 +20,7 @@ type response struct {
 // WriteJSON writes a JSON-encoded envelope to w with the given HTTP status.
 // If updated is the zero time, updated_at is rendered as JSON null.
 func WriteJSON(w http.ResponseWriter, status int, data any, updated time.Time, stale bool) {
-	env := response{
+	env := Response{
 		Data:  data,
 		Stale: stale,
 	}
