@@ -144,10 +144,10 @@ const columns: Column<Client>[] = [
     sortValue: (r) => r.allowlist_status,
   },
   {
-    key: "flows",
-    label: "Flows",
-    render: (r) => <MonoText>{r.flow_count.toLocaleString()}</MonoText>,
-    sortValue: (r) => r.flow_count,
+    key: "conns",
+    label: "Conns",
+    render: (r) => <MonoText>{r.conn_count.toLocaleString()}</MonoText>,
+    sortValue: (r) => r.conn_count,
     className: "text-right",
   },
 ];

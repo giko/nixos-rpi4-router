@@ -38,7 +38,7 @@ function PoolCard({ pool }: { pool: Pool }) {
 
       <div className="flex gap-4 text-xs text-on-surface-variant">
         <span>
-          Flows:{" "}
+          Connections:{" "}
           <MonoText>{totalFlows.toLocaleString()}</MonoText>
         </span>
         <span>

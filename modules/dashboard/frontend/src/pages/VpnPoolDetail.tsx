@@ -21,8 +21,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 type RoutedClient = {
   hostname: string;
   ip: string;
-  current_tunnel: string;
-  flow_count: number;
+  conn_count: number;
 };
 
 const memberColumns: Column<PoolMember>[] = [
@@ -49,8 +48,8 @@ const memberColumns: Column<PoolMember>[] = [
     sortValue: (r) => (r.healthy ? 0 : 1),
   },
   {
-    key: "flows",
-    label: "Flows",
+    key: "conns",
+    label: "Connections",
     render: (r) => <MonoText>{r.flow_count.toLocaleString()}</MonoText>,
     sortValue: (r) => r.flow_count,
     className: "text-right",
@@ -71,16 +70,10 @@ const clientColumns: Column<RoutedClient>[] = [
     sortValue: (r) => r.ip,
   },
   {
-    key: "tunnel",
-    label: "Current Tunnel",
-    render: (r) => <MonoText>{r.current_tunnel || "--"}</MonoText>,
-    sortValue: (r) => r.current_tunnel,
-  },
-  {
-    key: "flows",
-    label: "Flows",
-    render: (r) => <MonoText>{r.flow_count.toLocaleString()}</MonoText>,
-    sortValue: (r) => r.flow_count,
+    key: "conns",
+    label: "Connections",
+    render: (r) => <MonoText>{r.conn_count.toLocaleString()}</MonoText>,
+    sortValue: (r) => r.conn_count,
     className: "text-right",
   },
 ];
@@ -124,7 +117,7 @@ export function VpnPoolDetail() {
   }
 
   const healthy = pool.members.filter((m) => m.healthy).length;
-  const totalFlows = pool.members.reduce((s, m) => s + m.flow_count, 0);
+  const totalConns = pool.members.reduce((s, m) => s + m.flow_count, 0);
 
   const allClients: Client[] = clientsQ.data?.data.clients ?? [];
   const poolClientIps = new Set(pool.client_ips);
@@ -133,8 +126,7 @@ export function VpnPoolDetail() {
     .map((c) => ({
       hostname: c.hostname,
       ip: c.ip,
-      current_tunnel: c.current_tunnel,
-      flow_count: c.flow_count,
+      conn_count: c.conn_count,
     }));
 
   return (
@@ -158,7 +150,7 @@ export function VpnPoolDetail() {
 
       {/* Stat tiles */}
       <div className="grid grid-cols-3 gap-4">
-        <StatTile label="Total Flows" value={totalFlows.toLocaleString()} />
+        <StatTile label="Total Connections" value={totalConns.toLocaleString()} />
         <StatTile
           label="Healthy Members"
           value={`${healthy} / ${pool.members.length}`}
