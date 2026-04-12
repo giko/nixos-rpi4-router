@@ -78,8 +78,20 @@ export function VpnPools() {
     refetchInterval: 5_000,
   });
 
-  if (poolsQ.isPending) {
+  // Wait for BOTH queries — the cards' connection counts are derived from
+  // client.tunnel_conns, so rendering before clients resolve would flash
+  // zeroes even on busy pools. The clients query also surfaces errors
+  // (e.g. /api/clients unavailable) that would otherwise silently
+  // degrade every count to zero.
+  if (poolsQ.isPending || clientsQ.isPending) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
+  }
+  if (clientsQ.isError) {
+    return (
+      <div className="text-sm text-rose font-mono">
+        Failed to load client data — pool counts unavailable.
+      </div>
+    );
   }
 
   const pools = poolsQ.data?.data.pools ?? [];

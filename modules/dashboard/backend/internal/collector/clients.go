@@ -134,6 +134,22 @@ func (c *Clients) Run(ctx context.Context) error {
 	// 4. Enrich with connection info and route derivation.
 	connInfo, _ := c.opts.State.SnapshotClientConns()
 
+	// 4a. Synthesise clients for conntrack-only IPs that aren't in any
+	// lease or neighbour record. Without this, a static-IP device with
+	// an aged-out ARP entry (common on server subnets) would silently
+	// disappear from the clients list — and, more importantly, from
+	// pool connection totals that aggregate client.tunnel_conns.
+	for ip := range connInfo {
+		if _, ok := seen[ip]; ok {
+			continue
+		}
+		seen[ip] = struct{}{}
+		clients = append(clients, model.Client{
+			IP:        ip,
+			LeaseType: "conntrack",
+		})
+	}
+
 	now := time.Now()
 	for i := range clients {
 		cl := &clients[i]
