@@ -12,9 +12,9 @@ import (
 )
 
 type Response struct {
-	Data      any     `json:"data"`
-	UpdatedAt *string `json:"updated_at"`
-	Stale     bool    `json:"stale"`
+	Data      any        `json:"data"`
+	UpdatedAt *time.Time `json:"updated_at"`
+	Stale     bool       `json:"stale"`
 }
 
 // WriteJSON writes a JSON-encoded envelope to w with the given HTTP status.
@@ -25,8 +25,8 @@ func WriteJSON(w http.ResponseWriter, status int, data any, updated time.Time, s
 		Stale: stale,
 	}
 	if !updated.IsZero() {
-		s := updated.UTC().Format(time.RFC3339)
-		env.UpdatedAt = &s
+		u := updated.UTC()
+		env.UpdatedAt = &u
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
