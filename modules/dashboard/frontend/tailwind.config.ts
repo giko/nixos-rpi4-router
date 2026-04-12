@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["class"],
@@ -35,6 +36,27 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          lowest: "hsl(var(--surface-container-lowest))",
+          low: "hsl(var(--surface-container-low))",
+          container: "hsl(var(--surface-container))",
+          high: "hsl(var(--surface-container-high))",
+          highest: "hsl(var(--surface-container-highest))",
+          variant: "hsl(var(--surface-variant))",
+        },
+        "on-surface": "hsl(var(--on-surface))",
+        "on-surface-variant": "hsl(var(--on-surface-variant))",
+        "outline-variant": "hsl(var(--outline-variant))",
+        "primary-container": "hsl(var(--primary-container))",
+        info: "hsl(var(--info))",
+        emerald: { DEFAULT: "hsl(var(--emerald))" },
+        amber: { DEFAULT: "hsl(var(--amber))" },
+        rose: { DEFAULT: "hsl(var(--rose))" },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
@@ -47,7 +69,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [animate],
 };
 
 export default config;
