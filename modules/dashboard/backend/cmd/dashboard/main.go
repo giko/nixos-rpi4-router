@@ -67,6 +67,11 @@ func main() {
 			UptimePath:  "/proc/uptime",
 			State:       st,
 		}),
+		collector.NewTunnels(collector.TunnelsOpts{
+			Topology:       topo,
+			PoolHealthPath: "/run/wg-pool-health/state.json",
+			State:          st,
+		}),
 		collector.NewSystemMedium(collector.SystemMediumOpts{
 			Units: []string{
 				"nftables.service", "dnsmasq.service", "adguardhome.service",

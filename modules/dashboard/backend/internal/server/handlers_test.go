@@ -111,6 +111,54 @@ func TestSystemHandlerReturnsStateSnapshot(t *testing.T) {
 	}
 }
 
+func TestTunnelsHandler(t *testing.T) {
+	st := state.New()
+	st.SetTunnels([]model.Tunnel{
+		{Name: "wg_sw", Healthy: true, Fwmark: "0x20000"},
+	})
+
+	h := New(&config.Config{}, st, &topology.Topology{})
+	req := httptest.NewRequest(http.MethodGet, "/api/tunnels", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+
+	var env struct {
+		Data struct {
+			Tunnels []model.Tunnel `json:"tunnels"`
+		} `json:"data"`
+		UpdatedAt *string `json:"updated_at"`
+		Stale     bool    `json:"stale"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(env.Data.Tunnels) != 1 {
+		t.Fatalf("expected 1 tunnel, got %d", len(env.Data.Tunnels))
+	}
+	if env.Data.Tunnels[0].Name != "wg_sw" {
+		t.Errorf("tunnel name = %q, want wg_sw", env.Data.Tunnels[0].Name)
+	}
+	if !env.Data.Tunnels[0].Healthy {
+		t.Error("tunnel should be healthy")
+	}
+	if env.Data.Tunnels[0].Fwmark != "0x20000" {
+		t.Errorf("tunnel fwmark = %q, want 0x20000", env.Data.Tunnels[0].Fwmark)
+	}
+	if env.UpdatedAt == nil {
+		t.Error("updated_at should not be null")
+	}
+	if env.Stale {
+		t.Error("stale should be false for fresh data")
+	}
+}
+
 func TestTrafficHandlerStaleWhenNeverUpdated(t *testing.T) {
 	st := state.New()
 	// Never call SetTraffic -- data is zero-time, should be stale.
