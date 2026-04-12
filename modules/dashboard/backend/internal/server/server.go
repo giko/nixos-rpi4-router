@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/ratelimit"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/adguard"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/spa"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
@@ -106,7 +107,7 @@ func New(cfg *config.Config, st *state.State, _ *topology.Topology) http.Handler
 	// Everything else: SPA (client-side router resolves the path).
 	mux.Handle("/", spa.Handler())
 
-	return mux
+	return ratelimit.New(ratelimit.Default())(mux)
 }
 
 type healthResponse struct {
