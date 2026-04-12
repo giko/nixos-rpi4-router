@@ -141,13 +141,14 @@ func (s *State) SnapshotClients() ([]model.Client, time.Time) {
 }
 
 // SnapshotClient returns the client with the given IP, the section's update
-// time, and a boolean indicating whether the client was found.
+// time, and a boolean indicating whether the client was found. The returned
+// Client is a deep copy so callers can freely mutate it.
 func (s *State) SnapshotClient(ip string) (model.Client, time.Time, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, c := range s.clients {
 		if c.IP == ip {
-			return c, s.clientsUpdated, true
+			return copyClient(c), s.clientsUpdated, true
 		}
 	}
 	return model.Client{}, s.clientsUpdated, false
@@ -268,8 +269,23 @@ func copyClients(src []model.Client) []model.Client {
 		return nil
 	}
 	dst := make([]model.Client, len(src))
-	copy(dst, src)
+	for i, c := range src {
+		dst[i] = copyClient(c)
+	}
 	return dst
+}
+
+// copyClient deep-copies a Client so its map fields don't alias across
+// the state cache and snapshot callers.
+func copyClient(c model.Client) model.Client {
+	out := c
+	if c.TunnelConns != nil {
+		out.TunnelConns = make(map[string]int, len(c.TunnelConns))
+		for k, v := range c.TunnelConns {
+			out.TunnelConns[k] = v
+		}
+	}
+	return out
 }
 
 func copySystem(src model.SystemStats) model.SystemStats {
