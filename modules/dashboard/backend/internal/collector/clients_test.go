@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
@@ -40,9 +41,9 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 
 	st := state.New()
 
-	// Seed client fwmarks: desktop has fwmark for wg_sw.
-	st.SetClientFwmarks(map[string]string{
-		"192.168.1.10": "0x20000",
+	// Seed client connection info: desktop has connections through wg_sw.
+	st.SetClientConns(map[string]conntrack.ClientConnInfo{
+		"192.168.1.10": {TotalConns: 5, TunnelConns: map[string]int{"0x20000": 3}},
 	})
 
 	// Fake neighbour table: 3 IPs, one overlaps with static (should be skipped).
@@ -117,8 +118,8 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 	if cl.Route != "pool:vpn_pool" {
 		t.Errorf("static lease: Route = %q, want pool:vpn_pool", cl.Route)
 	}
-	if cl.CurrentTunnel != "wg_sw" {
-		t.Errorf("static lease: CurrentTunnel = %q, want wg_sw", cl.CurrentTunnel)
+	if cl.ConnCount != 5 {
+		t.Errorf("static lease: ConnCount = %d, want 5", cl.ConnCount)
 	}
 
 	// Dynamic lease: phone (explicitly in AllowedMACs).

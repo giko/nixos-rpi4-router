@@ -7,36 +7,51 @@ import (
 	"strings"
 )
 
-// ClientFwmarks runs `conntrack -L` and returns a map of src_ip to fwmark (hex).
-// Flows with mark=0 (WAN / unmarked) are excluded. The first-seen mark wins
-// per IP, so the map reflects the earliest flow for each client.
-func ClientFwmarks(ctx context.Context, run Runner) (map[string]string, error) {
+// ClientConnInfo holds per-client connection data derived from conntrack.
+type ClientConnInfo struct {
+	// TotalConns is the total number of tracked connections for this IP
+	// (including mark=0 / WAN connections).
+	TotalConns int
+	// TunnelConns maps tunnel fwmark (hex) → connection count. Only
+	// non-zero marks are included. In a round-robin pool, a single
+	// client's connections are spread across all healthy tunnels.
+	TunnelConns map[string]int
+}
+
+// ClientConnections runs `conntrack -L` and returns per-source-IP
+// connection info. Every connection is counted (including WAN/mark=0).
+// Tunnel-specific counts are keyed by hex fwmark.
+func ClientConnections(ctx context.Context, run Runner) (map[string]ClientConnInfo, error) {
 	out, err := run(ctx, "-L")
 	if err != nil {
-		return nil, fmt.Errorf("clientfwmarks: %w", err)
+		return nil, fmt.Errorf("clientconns: %w", err)
 	}
 
-	result := make(map[string]string)
+	result := make(map[string]ClientConnInfo)
 	for _, line := range strings.Split(out, "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
 		src := extractField(line, "src")
+		if src == "" {
+			continue
+		}
+
+		info := result[src]
+		info.TotalConns++
+
 		markStr := extractField(line, "mark")
-		if src == "" || markStr == "" {
-			continue
+		if markStr != "" {
+			mark, err := strconv.ParseUint(markStr, 10, 64)
+			if err == nil && mark != 0 {
+				if info.TunnelConns == nil {
+					info.TunnelConns = make(map[string]int)
+				}
+				info.TunnelConns[fmt.Sprintf("0x%x", mark)]++
+			}
 		}
-
-		mark, err := strconv.ParseUint(markStr, 10, 64)
-		if err != nil || mark == 0 {
-			continue
-		}
-
-		hex := fmt.Sprintf("0x%x", mark)
-		if _, exists := result[src]; !exists {
-			result[src] = hex
-		}
+		result[src] = info
 	}
 
 	return result, nil

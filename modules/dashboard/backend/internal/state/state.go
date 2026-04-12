@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
+
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
 )
 
@@ -34,8 +36,8 @@ type State struct {
 	adguard        model.AdguardStats
 	adguardUpdated time.Time
 
-	clientFwmarks        map[string]string
-	clientFwmarksUpdated time.Time
+	clientConns        map[string]conntrack.ClientConnInfo
+	clientConnsUpdated time.Time
 }
 
 // New returns an initialized State with zero values.
@@ -171,27 +173,41 @@ func (s *State) SnapshotAdguard() (model.AdguardStats, time.Time) {
 
 // --- Client Fwmarks ---
 
-// SetClientFwmarks replaces the cached client fwmark map with a defensive copy.
-func (s *State) SetClientFwmarks(m map[string]string) {
+// SetClientConns replaces the cached per-client connection info.
+func (s *State) SetClientConns(m map[string]conntrack.ClientConnInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.clientFwmarks = make(map[string]string, len(m))
+	s.clientConns = make(map[string]conntrack.ClientConnInfo, len(m))
 	for k, v := range m {
-		s.clientFwmarks[k] = v
+		// Deep-copy the TunnelConns map.
+		cp := conntrack.ClientConnInfo{TotalConns: v.TotalConns}
+		if v.TunnelConns != nil {
+			cp.TunnelConns = make(map[string]int, len(v.TunnelConns))
+			for mk, mv := range v.TunnelConns {
+				cp.TunnelConns[mk] = mv
+			}
+		}
+		s.clientConns[k] = cp
 	}
-	s.clientFwmarksUpdated = time.Now().UTC()
+	s.clientConnsUpdated = time.Now().UTC()
 }
 
-// SnapshotClientFwmarks returns a defensive copy of the cached client fwmark
-// map and its update time.
-func (s *State) SnapshotClientFwmarks() (map[string]string, time.Time) {
+// SnapshotClientConns returns a defensive copy.
+func (s *State) SnapshotClientConns() (map[string]conntrack.ClientConnInfo, time.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := make(map[string]string, len(s.clientFwmarks))
-	for k, v := range s.clientFwmarks {
-		out[k] = v
+	out := make(map[string]conntrack.ClientConnInfo, len(s.clientConns))
+	for k, v := range s.clientConns {
+		cp := conntrack.ClientConnInfo{TotalConns: v.TotalConns}
+		if v.TunnelConns != nil {
+			cp.TunnelConns = make(map[string]int, len(v.TunnelConns))
+			for mk, mv := range v.TunnelConns {
+				cp.TunnelConns[mk] = mv
+			}
+		}
+		out[k] = cp
 	}
-	return out, s.clientFwmarksUpdated
+	return out, s.clientConnsUpdated
 }
 
 // --- Staleness ---
