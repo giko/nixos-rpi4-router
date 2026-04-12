@@ -61,27 +61,34 @@ function serviceColor(
 function HealthStrip({
   system,
   pools,
+  wanOperstate,
 }: {
   system: System | undefined;
   pools: Pool[] | undefined;
+  wanOperstate: string | undefined; // from traffic.interfaces[eth1].operstate
 }) {
-  const wanColor = system
-    ? serviceColor(system.services, "nftables.service")
-    : "amber";
-  const wanValue = wanColor === "emerald" ? "ONLINE" : "DOWN";
+  // WAN status: based on physical link state (operstate), not nftables service
+  const wanUp = wanOperstate === "up";
+  const wanColor: PipColor = wanOperstate === undefined ? "amber" : wanUp ? "emerald" : "rose";
+  const wanValue = wanOperstate === undefined ? "..." : wanUp ? "ONLINE" : "DOWN";
   const wanDetail = system
-    ? `uptime ${formatDuration(system.uptime_seconds)}`
+    ? wanUp
+      ? `uptime ${formatDuration(system.uptime_seconds)}`
+      : `link ${wanOperstate ?? "unknown"}`
     : "loading...";
 
-  const dnsColor = system
-    ? serviceColor(system.services, "adguardhome.service")
-    : "amber";
-  const dnsValue = dnsColor === "emerald" ? "RESOLVING" : "DOWN";
-  const dnsDetail = system
-    ? serviceColor(system.services, "adguardhome.service") === "emerald"
-      ? "adguardhome active"
-      : "adguardhome inactive"
-    : "loading...";
+  // DNS status: service running AND WAN link up → resolving.
+  // Service running but WAN down → degraded (can serve cache only).
+  const dnsActive = serviceColor(system?.services ?? null, "adguardhome.service") === "emerald";
+  const dnsColor: PipColor = !system ? "amber" : dnsActive && wanUp ? "emerald" : dnsActive && !wanUp ? "amber" : "rose";
+  const dnsValue = !system ? "..." : dnsActive && wanUp ? "RESOLVING" : dnsActive && !wanUp ? "DEGRADED" : "DOWN";
+  const dnsDetail = !system
+    ? "loading..."
+    : dnsActive && !wanUp
+      ? "cache only — no WAN"
+      : dnsActive
+        ? "adguardhome active"
+        : "adguardhome inactive";
 
   let poolOnline = 0;
   let poolTotal = 0;
@@ -382,7 +389,11 @@ export function Overview() {
 
   return (
     <div className="grid grid-cols-12 gap-4">
-      <HealthStrip system={system} pools={pools} />
+      <HealthStrip
+        system={system}
+        pools={pools}
+        wanOperstate={traffic?.interfaces.find((i) => i.name === "eth1")?.operstate}
+      />
 
       <ThroughputCard
         traffic={traffic}

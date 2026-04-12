@@ -6,6 +6,7 @@ type Traffic struct {
 
 type Interface struct {
 	Name         string            `json:"name"`
+	Operstate    string            `json:"operstate"` // "up", "down", "unknown" — from /sys/class/net/<name>/operstate
 	RXBps        uint64            `json:"rx_bps"`
 	TXBps        uint64            `json:"tx_bps"`
 	RXBytesTotal uint64            `json:"rx_bytes_total"`
