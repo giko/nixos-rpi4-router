@@ -15,6 +15,7 @@ import (
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/collector"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/server"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/adguard"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/ipneigh"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
@@ -87,6 +88,10 @@ func main() {
 			Neigh: func(ctx context.Context) (map[string]string, error) {
 				return ipneigh.Collect(ctx, ipneigh.DefaultRunner)
 			},
+		}),
+		collector.NewAdguardStats(collector.AdguardStatsOpts{
+			Client: adguard.NewClient(cfg.AdguardURL, nil),
+			State:  st,
 		}),
 		collector.NewSystemMedium(collector.SystemMediumOpts{
 			Units: []string{
