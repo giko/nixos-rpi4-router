@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Pool, PoolMember, Client } from "@/lib/api";
+import type { Pool, Client } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { MonoText } from "@/components/MonoText";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -24,7 +24,18 @@ type RoutedClient = {
   conn_count: number;
 };
 
-const memberColumns: Column<PoolMember>[] = [
+// ScopedMember is the pool-page variant of PoolMember where `conn_count`
+// is summed from client.tunnel_conns restricted to this pool's clients.
+// Using pool.members[].flow_count directly would include any non-pool
+// traffic on the tunnel (e.g. a shared source-rule or domain-rule).
+type ScopedMember = {
+  tunnel: string;
+  fwmark: string;
+  healthy: boolean;
+  conn_count: number;
+};
+
+const memberColumns: Column<ScopedMember>[] = [
   {
     key: "tunnel",
     label: "Tunnel",
@@ -50,8 +61,8 @@ const memberColumns: Column<PoolMember>[] = [
   {
     key: "conns",
     label: "Connections",
-    render: (r) => <MonoText>{r.flow_count.toLocaleString()}</MonoText>,
-    sortValue: (r) => r.flow_count,
+    render: (r) => <MonoText>{r.conn_count.toLocaleString()}</MonoText>,
+    sortValue: (r) => r.conn_count,
     className: "text-right",
   },
 ];
@@ -117,28 +128,47 @@ export function VpnPoolDetail() {
   }
 
   const healthy = pool.members.filter((m) => m.healthy).length;
-  const totalConns = pool.members.reduce((s, m) => s + m.flow_count, 0);
 
   const allClients: Client[] = clientsQ.data?.data.clients ?? [];
   const poolClientIps = new Set(pool.client_ips);
-  // Pool-scoped connection count: sum only the tunnel_conns entries whose
-  // fwmark belongs to this pool. Using the global `conn_count` here would
-  // attribute unrelated LAN/WAN traffic to the pool.
+  // Filter once, then derive every pool-scoped count from the SAME source
+  // (client.tunnel_conns restricted to this pool's fwmarks). This keeps
+  // per-client totals, per-member totals, and the "Total Connections" tile
+  // arithmetically consistent even when a tunnel is shared with a non-pool
+  // source or domain rule.
+  const poolClients = allClients.filter((c) => poolClientIps.has(c.ip));
+
+  // Per-member: sum across this pool's clients of tunnel_conns[member.fwmark].
+  const scopedMembers: ScopedMember[] = pool.members.map((m) => {
+    const count = poolClients.reduce(
+      (sum, c) => sum + ((c.tunnel_conns ?? {})[m.fwmark] ?? 0),
+      0,
+    );
+    return {
+      tunnel: m.tunnel,
+      fwmark: m.fwmark,
+      healthy: m.healthy,
+      conn_count: count,
+    };
+  });
+
+  // Per-client: sum across this pool's fwmarks of client.tunnel_conns[mark].
   const poolFwmarks = pool.members.map((m) => m.fwmark);
-  const routedClients: RoutedClient[] = allClients
-    .filter((c) => poolClientIps.has(c.ip))
-    .map((c) => {
-      const tunnelConns = c.tunnel_conns ?? {};
-      const poolScopedConns = poolFwmarks.reduce(
-        (sum, mark) => sum + (tunnelConns[mark] ?? 0),
-        0,
-      );
-      return {
-        hostname: c.hostname,
-        ip: c.ip,
-        conn_count: poolScopedConns,
-      };
-    });
+  const routedClients: RoutedClient[] = poolClients.map((c) => {
+    const tunnelConns = c.tunnel_conns ?? {};
+    const poolScopedConns = poolFwmarks.reduce(
+      (sum, mark) => sum + (tunnelConns[mark] ?? 0),
+      0,
+    );
+    return {
+      hostname: c.hostname,
+      ip: c.ip,
+      conn_count: poolScopedConns,
+    };
+  });
+
+  // Both aggregations use the same data so per-member total == per-client total.
+  const totalConns = scopedMembers.reduce((s, m) => s + m.conn_count, 0);
 
   return (
     <div className="space-y-6">
@@ -177,7 +207,7 @@ export function VpnPoolDetail() {
         <h2 className="label-xs">Member Distribution</h2>
         <DataTable
           columns={memberColumns}
-          rows={pool.members}
+          rows={scopedMembers}
           rowKey={(r) => r.tunnel}
         />
       </div>
