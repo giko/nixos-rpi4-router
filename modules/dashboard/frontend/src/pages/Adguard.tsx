@@ -175,8 +175,8 @@ function LogRow({ entry }: { entry: QueryLogEntry }) {
         {blocked ? "BLOCK" : "ALLOW"}
       </span>
       <MonoText className="text-[10px] truncate">
-        {entry.question}
-        <span className="text-on-surface-variant ml-1">{entry.question_type}</span>
+        {entry.question.name}
+        <span className="text-on-surface-variant ml-1">({entry.question.type})</span>
       </MonoText>
       <MonoText className="text-[10px] text-on-surface-variant shrink-0 ml-auto">
         {entry.client}

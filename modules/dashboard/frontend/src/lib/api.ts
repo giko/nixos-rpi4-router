@@ -93,12 +93,11 @@ export type AdguardStats = {
 };
 export type QueryLogEntry = {
   time: string;
-  question: string;
-  question_type: string;
+  question: { class: string; name: string; type: string };
   client: string;
   upstream: string;
   reason: string;
-  elapsed_ms: number;
+  elapsedMs: string;
 };
 
 async function fetchEnvelope<T>(path: string): Promise<Envelope<T>> {
