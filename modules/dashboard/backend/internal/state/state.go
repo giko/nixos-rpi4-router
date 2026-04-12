@@ -42,19 +42,20 @@ func New() *State {
 
 // --- System ---
 
-// SetSystem replaces the cached system stats.
+// SetSystem replaces the cached system stats with a defensive copy.
 func (s *State) SetSystem(v model.SystemStats) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.system = v
+	s.system = copySystem(v)
 	s.systemUpdated = time.Now()
 }
 
-// SnapshotSystem returns a copy of the cached system stats and its update time.
+// SnapshotSystem returns a defensive copy of the cached system stats and its
+// update time.
 func (s *State) SnapshotSystem() (model.SystemStats, time.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.system, s.systemUpdated
+	return copySystem(s.system), s.systemUpdated
 }
 
 // --- Traffic ---
@@ -149,20 +150,20 @@ func (s *State) SnapshotClient(ip string) (model.Client, time.Time, bool) {
 
 // --- Adguard ---
 
-// SetAdguard replaces the cached AdGuard stats.
+// SetAdguard replaces the cached AdGuard stats with a defensive copy.
 func (s *State) SetAdguard(v model.AdguardStats) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.adguard = v
+	s.adguard = copyAdguard(v)
 	s.adguardUpdated = time.Now()
 }
 
-// SnapshotAdguard returns a copy of the cached AdGuard stats and the update
-// time.
+// SnapshotAdguard returns a defensive copy of the cached AdGuard stats and
+// the update time.
 func (s *State) SnapshotAdguard() (model.AdguardStats, time.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.adguard, s.adguardUpdated
+	return copyAdguard(s.adguard), s.adguardUpdated
 }
 
 // --- Staleness ---
@@ -184,7 +185,13 @@ func copyInterfaces(src []model.Interface) []model.Interface {
 		return nil
 	}
 	dst := make([]model.Interface, len(src))
-	copy(dst, src)
+	for i, iface := range src {
+		dst[i] = iface
+		if iface.Samples60s != nil {
+			dst[i].Samples60s = make([]model.InterfaceSample, len(iface.Samples60s))
+			copy(dst[i].Samples60s, iface.Samples60s)
+		}
+	}
 	return dst
 }
 
@@ -218,5 +225,31 @@ func copyClients(src []model.Client) []model.Client {
 	}
 	dst := make([]model.Client, len(src))
 	copy(dst, src)
+	return dst
+}
+
+func copySystem(src model.SystemStats) model.SystemStats {
+	dst := src
+	if src.Services != nil {
+		dst.Services = make([]model.ServiceState, len(src.Services))
+		copy(dst.Services, src.Services)
+	}
+	return dst
+}
+
+func copyAdguard(src model.AdguardStats) model.AdguardStats {
+	dst := src
+	if src.TopBlocked != nil {
+		dst.TopBlocked = make([]model.TopDomain, len(src.TopBlocked))
+		copy(dst.TopBlocked, src.TopBlocked)
+	}
+	if src.TopClients != nil {
+		dst.TopClients = make([]model.TopClient, len(src.TopClients))
+		copy(dst.TopClients, src.TopClients)
+	}
+	if src.QueryDensity24h != nil {
+		dst.QueryDensity24h = make([]model.DensityBin, len(src.QueryDensity24h))
+		copy(dst.QueryDensity24h, src.QueryDensity24h)
+	}
 	return dst
 }
