@@ -67,6 +67,14 @@ func main() {
 			UptimePath:  "/proc/uptime",
 			State:       st,
 		}),
+		collector.NewSystemMedium(collector.SystemMediumOpts{
+			Units: []string{
+				"nftables.service", "dnsmasq.service", "adguardhome.service",
+				"wg-pool-health.service", "flow-offload.service",
+				"cake-qos.service", "chronyd.service", "policy-routing.service",
+			},
+			State: st,
+		}),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

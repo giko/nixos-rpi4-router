@@ -6,6 +6,8 @@ import (
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/proc"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/systemd"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/vcgencmd"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 )
 
@@ -99,5 +101,61 @@ func (s *System) Run(_ context.Context) error {
 	}
 
 	s.opts.State.SetSystem(sys)
+	return nil
+}
+
+// --------------- SystemMedium collector ---------------
+
+// SystemMediumOpts configures the SystemMedium collector.
+type SystemMediumOpts struct {
+	Units []string
+	State *state.State
+}
+
+// SystemMedium collects service states (via systemctl) and throttle flags
+// (via vcgencmd) on a medium-tier (5 s) interval.
+type SystemMedium struct {
+	opts SystemMediumOpts
+}
+
+// NewSystemMedium creates a SystemMedium collector.
+func NewSystemMedium(opts SystemMediumOpts) *SystemMedium {
+	return &SystemMedium{opts: opts}
+}
+
+func (*SystemMedium) Name() string { return "system-medium" }
+func (*SystemMedium) Tier() Tier   { return Medium }
+
+// Run performs a single collection pass. It loads the current system state,
+// updates only the medium-tier fields, and writes the merged result back.
+func (m *SystemMedium) Run(ctx context.Context) error {
+	var (
+		services []model.ServiceState
+		svcErr   error
+		throttle string
+		tFlag    bool
+		tErr     error
+	)
+
+	services, svcErr = systemd.Collect(ctx, m.opts.Units)
+	throttle, tFlag, tErr = vcgencmd.Collect(ctx)
+
+	// If both sources failed, return first error.
+	if svcErr != nil && tErr != nil {
+		return svcErr
+	}
+
+	// Snapshot existing state to preserve hot-tier fields.
+	existing, _ := m.opts.State.SnapshotSystem()
+
+	if svcErr == nil {
+		existing.Services = services
+	}
+	if tErr == nil {
+		existing.Throttled = throttle
+		existing.ThrottledFlag = tFlag
+	}
+
+	m.opts.State.SetSystem(existing)
 	return nil
 }
