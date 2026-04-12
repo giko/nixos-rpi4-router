@@ -159,11 +159,8 @@ export function ClientDetail() {
           <DetailRow label="Route">
             <RouteValue route={client.route} />
           </DetailRow>
-          <DetailRow label="Current Tunnel">
-            <MonoText>{client.current_tunnel || "--"}</MonoText>
-          </DetailRow>
-          <DetailRow label="Flows">
-            <MonoText>{client.flow_count.toLocaleString()}</MonoText>
+          <DetailRow label="Connections">
+            <MonoText>{client.conn_count.toLocaleString()}</MonoText>
           </DetailRow>
         </div>
       </div>
