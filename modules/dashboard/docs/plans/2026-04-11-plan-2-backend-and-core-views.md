@@ -5555,22 +5555,50 @@ type QueryLogResponse struct {
 
 // FetchQueryLog calls /control/querylog and returns the raw JSON body
 // so the querylog handler can forward it with its own caching envelope.
+// FetchQueryLog calls /control/querylog and returns the normalised
+// queries array as JSON. AdGuard's upstream response is {"data": [...]}
+// but the dashboard's spec contract is {"queries": [...]}, so we
+// extract the "data" key here so the handler can wrap it verbatim.
 func (c *Client) FetchQueryLog(ctx context.Context, opts QueryLogOptions) (json.RawMessage, error) {
 	q := url.Values{}
 	if opts.Limit > 0 {
 		q.Set("limit", fmt.Sprintf("%d", opts.Limit))
 	}
-	if opts.Client != "" {
+	// AdGuard's /control/querylog has a single `search` parameter that
+	// matches against client IP, domain name, and upstream. When the
+	// dashboard caller passes both `client` and `domain`, we concatenate
+	// them with a space — AdGuard treats the whole string as one text
+	// match, which narrows the results. Not perfect (it's substring, not
+	// AND), but better than silently dropping one filter.
+	switch {
+	case opts.Client != "" && opts.Domain != "":
+		q.Set("search", opts.Client+" "+opts.Domain)
+	case opts.Client != "":
 		q.Set("search", opts.Client)
-	}
-	if opts.Domain != "" {
+	case opts.Domain != "":
 		q.Set("search", opts.Domain)
 	}
 	path := "/control/querylog"
 	if len(q) > 0 {
 		path += "?" + q.Encode()
 	}
-	return c.get(ctx, path)
+	body, err := c.get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	// Normalise: AdGuard returns {"data": [...], ...} — extract the
+	// "data" array so callers get a bare JSON array of query entries
+	// that the handler wraps in {"queries": ...} per spec §7.4.
+	var upstream struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &upstream); err != nil {
+		return body, nil
+	}
+	if upstream.Data == nil {
+		return []byte("[]"), nil
+	}
+	return upstream.Data, nil
 }
 
 func (c *Client) get(ctx context.Context, path string) (json.RawMessage, error) {
@@ -5815,6 +5843,7 @@ Replace `handlers_adguard.go` with:
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -5873,17 +5902,23 @@ func (q *queryLogCache) fetch(r *http.Request) (json.RawMessage, error) {
 	}
 	q.mu.Unlock()
 
-	result, err, _ := q.group.Do(key, func() (any, error) {
-		opts := adguard.QueryLogOptions{}
-		if l := r.URL.Query().Get("limit"); l != "" {
-			opts.Limit = parseIntDefault(l, 200)
-		} else {
-			opts.Limit = 200
-		}
-		opts.Client = r.URL.Query().Get("client")
-		opts.Domain = r.URL.Query().Get("domain")
+	// Build options outside the singleflight closure so all concurrent
+	// callers contribute their query string, but the fetch itself runs
+	// on a detached context. Using r.Context() inside Do would tie the
+	// shared fetch to the first caller — if that tab disconnects, every
+	// waiting request fails together.
+	opts := adguard.QueryLogOptions{Limit: 200}
+	if l := r.URL.Query().Get("limit"); l != "" {
+		opts.Limit = parseIntDefault(l, 200)
+	}
+	opts.Client = r.URL.Query().Get("client")
+	opts.Domain = r.URL.Query().Get("domain")
 
-		raw, err := q.client.FetchQueryLog(r.Context(), opts)
+	result, err, _ := q.group.Do(key, func() (any, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		raw, err := q.client.FetchQueryLog(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -5892,7 +5927,6 @@ func (q *queryLogCache) fetch(r *http.Request) (json.RawMessage, error) {
 			body:      raw,
 			expiresAt: time.Now().Add(queryLogTTL),
 		}
-		// Cheap eviction of stale entries.
 		for k, v := range q.cache {
 			if time.Now().After(v.expiresAt) {
 				delete(q.cache, k)
@@ -5930,9 +5964,12 @@ func handleAdguardQueryLog(cache *queryLogCache) http.HandlerFunc {
 			}, time.Now().UTC(), true)
 			return
 		}
-		// Pass the AdGuard body through inside our envelope. json.RawMessage
-		// is emitted verbatim so the UI sees exactly what AdGuard returned.
-		envelope.WriteJSON(w, http.StatusOK, raw, time.Now().UTC(), false)
+		// `raw` is already the normalised array of query entries (the
+		// AdGuard client extracts "data" from the upstream response).
+		// Wrap it under "queries" per spec §7.4.
+		envelope.WriteJSON(w, http.StatusOK, map[string]json.RawMessage{
+			"queries": raw,
+		}, time.Now().UTC(), false)
 	}
 }
 ```
@@ -6215,15 +6252,20 @@ func New(opts Options) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if !global.Allow() {
-				tooMany(w)
-				return
-			}
+			// Check per-IP BEFORE global. If a single noisy client is
+			// over its per-IP budget we reject immediately without
+			// consuming a global token. The previous order (global first)
+			// let one runaway tab burn through the shared 200 rps budget
+			// and start 429-ing unrelated admin clients.
 			ip, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err != nil {
 				ip = r.RemoteAddr
 			}
 			if !getLimiter(ip).Allow() {
+				tooMany(w)
+				return
+			}
+			if !global.Allow() {
 				tooMany(w)
 				return
 			}
@@ -6943,7 +6985,7 @@ export const api = {
   client: (ip: string) => fetchEnvelope<Client>(`/api/clients/${encodeURIComponent(ip)}`),
   adguardStats: () => fetchEnvelope<AdguardStats>("/api/adguard/stats"),
   adguardQueryLog: (params: URLSearchParams) =>
-    fetchEnvelope<{ data: QueryLogEntry[] }>("/api/adguard/querylog?" + params.toString()),
+    fetchEnvelope<{ queries: QueryLogEntry[] }>("/api/adguard/querylog?" + params.toString()),
 };
 
 // Note: /api/health does not wrap its body in an envelope; it returns a
@@ -8830,10 +8872,10 @@ export function Adguard() {
           </div>
         </div>
         <div className="space-y-1 font-mono text-[10px] max-h-[400px] overflow-y-auto">
-          {(querylog.data?.data?.data ?? []).length === 0 && (
+          {(querylog.data?.data?.queries ?? []).length === 0 && (
             <p className="text-on-surface-variant">No queries yet.</p>
           )}
-          {(querylog.data?.data?.data ?? []).map((row: QueryLogEntry, i: number) => (
+          {(querylog.data?.data?.queries ?? []).map((row: QueryLogEntry, i: number) => (
             <div key={i} className="flex gap-3 py-0.5">
               <MonoText className="text-on-surface-variant">{row.time?.slice(11, 19) ?? "—"}</MonoText>
               <MonoText className={row.reason?.startsWith("Filtered") ? "text-rose" : "text-emerald"}>
