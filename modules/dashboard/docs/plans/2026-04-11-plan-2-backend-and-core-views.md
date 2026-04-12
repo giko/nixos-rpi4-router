@@ -231,12 +231,15 @@ The Nix module knows which tunnels, pools, pooled rules, and static leases exist
   "static_leases": [
     { "mac": "1C:1A:DF:5C:D3:88", "ip": "192.168.1.194", "name": "XBOX" }
   ],
+  "allowlist_enabled": true,
   "allowed_macs": [
     "44:fa:66:65:86:43"
   ],
   "lan_interface": "eth0"
 }
 ```
+
+`allowlist_enabled` is true only when `router.nftables.allowedMacs` is actually configured; when the option is `null` on this deployment, the flag is false and the dashboard renders every client's allowlist status as `n/a` instead of falsely flagging them as `blocked`. This matters because `router.nftables.allowedMacs` is declared `nullOr` in `modules/nftables.nix` — some installs won't use the MAC allowlist at all.
 
 The dashboard reads this on startup, fails hard if the file is present-but-unparseable, and tolerates a missing file (empty topology → all affected endpoints return empty slices).
 
@@ -1248,6 +1251,7 @@ const fixture = `{
   "static_leases": [
     {"mac":"aa:bb:cc:dd:ee:ff","ip":"192.168.1.10","name":"XBOX"}
   ],
+  "allowlist_enabled": true,
   "allowed_macs": ["aa:bb:cc:dd:ee:ff"],
   "lan_interface": "eth0"
 }`
@@ -1280,6 +1284,29 @@ func TestLoadValid(t *testing.T) {
 	}
 	if topo.LANInterface != "eth0" {
 		t.Errorf("lan = %q", topo.LANInterface)
+	}
+	if !topo.AllowlistEnabled {
+		t.Errorf("allowlist_enabled = %v, want true", topo.AllowlistEnabled)
+	}
+}
+
+func TestLoadAllowlistDisabled(t *testing.T) {
+	// When router.nftables.allowedMacs is null on this install, the
+	// module emits allowlist_enabled: false and the allowed_macs array
+	// is empty. The Clients collector uses the flag — not the array
+	// length — to decide whether to annotate clients as allowed/blocked.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "topology.json")
+	body := `{"allowlist_enabled": false, "allowed_macs": []}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	topo, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if topo.AllowlistEnabled {
+		t.Errorf("AllowlistEnabled = true, want false")
 	}
 }
 
@@ -1359,12 +1386,17 @@ import (
 
 // Topology is the runtime mirror of the module-rendered config file.
 type Topology struct {
-	Tunnels      []Tunnel      `json:"tunnels"`
-	Pools        []Pool        `json:"pools"`
-	PooledRules  []PooledRule  `json:"pooled_rules"`
-	StaticLeases []StaticLease `json:"static_leases"`
-	AllowedMACs  []string      `json:"allowed_macs"`
-	LANInterface string        `json:"lan_interface"`
+	Tunnels          []Tunnel      `json:"tunnels"`
+	Pools            []Pool        `json:"pools"`
+	PooledRules      []PooledRule  `json:"pooled_rules"`
+	StaticLeases     []StaticLease `json:"static_leases"`
+	// AllowlistEnabled is true only when router.nftables.allowedMacs is
+	// configured on this install. When false, the dashboard must treat
+	// every client's allowlist status as n/a rather than "blocked" —
+	// there is no policy in effect.
+	AllowlistEnabled bool     `json:"allowlist_enabled"`
+	AllowedMACs      []string `json:"allowed_macs"`
+	LANInterface     string   `json:"lan_interface"`
 }
 
 type Tunnel struct {
@@ -4885,7 +4917,8 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 		StaticLeases: []topology.StaticLease{
 			{MAC: "11:22:33:44:55:66", IP: "192.168.1.194", Name: "XBOX"},
 		},
-		AllowedMACs: []string{"11:22:33:44:55:66"},
+		AllowlistEnabled: true,
+		AllowedMACs:      []string{"11:22:33:44:55:66"},
 		PooledRules: []topology.PooledRule{
 			{Sources: []string{"192.168.1.10"}, Pool: "all"},
 		},
@@ -4938,6 +4971,13 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 		t.Errorf("xbox allowlist = %q", xbox.AllowlistStatus)
 	}
 
+	// iphone is NOT in AllowedMACs → should be flagged blocked.
+	for _, cl := range clients {
+		if cl.IP == "192.168.1.10" && cl.AllowlistStatus != "blocked" {
+			t.Errorf("iphone allowlist = %q, want blocked", cl.AllowlistStatus)
+		}
+	}
+
 	// Client 192.168.1.10 is in a pooled rule and has a non-zero ct mark.
 	var iphone model.Client
 	for _, cl := range clients {
@@ -4961,6 +5001,35 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 	}
 	if neigh.LeaseType != "neighbor" {
 		t.Errorf("neigh lease_type = %q", neigh.LeaseType)
+	}
+}
+
+// When the install does not configure an MAC allowlist, every client's
+// allowlist_status must be "n/a". The previous behaviour treated an
+// empty AllowedMACs as "block all" and flagged every device, which was
+// wrong on routers that never declared the option.
+func TestClientsCollectorAllowlistDisabled(t *testing.T) {
+	st := state.New()
+	topo := &topology.Topology{
+		AllowlistEnabled: false,
+		StaticLeases: []topology.StaticLease{
+			{MAC: "11:22:33:44:55:66", IP: "192.168.1.194", Name: "XBOX"},
+		},
+	}
+	c := NewClients(ClientsOpts{
+		Topology:   topo,
+		LeasesPath: "/nonexistent",
+		State:      st,
+		NeighFunc: func(_ context.Context) (map[string]string, error) {
+			return map[string]string{"192.168.1.20": "aa:aa:aa:aa:aa:aa"}, nil
+		},
+	})
+	_ = c.Run(context.Background())
+	clients, _ := st.SnapshotClients()
+	for _, cl := range clients {
+		if cl.AllowlistStatus != "n/a" {
+			t.Errorf("%s allowlist = %q, want n/a", cl.IP, cl.AllowlistStatus)
+		}
 	}
 }
 ```
@@ -5026,12 +5095,14 @@ func (c *Clients) Run(ctx context.Context) error {
 
 	topo := c.opts.Topology
 	allowed := map[string]struct{}{}
-	for _, m := range topo.AllowedMACs {
-		allowed[strings.ToLower(m)] = struct{}{}
-	}
-	// Static-leased MACs are implicitly allowed (see nftables module spec).
-	for _, sl := range topo.StaticLeases {
-		allowed[strings.ToLower(sl.MAC)] = struct{}{}
+	if topo.AllowlistEnabled {
+		for _, m := range topo.AllowedMACs {
+			allowed[strings.ToLower(m)] = struct{}{}
+		}
+		// Static-leased MACs are implicitly allowed (see nftables module spec).
+		for _, sl := range topo.StaticLeases {
+			allowed[strings.ToLower(sl.MAC)] = struct{}{}
+		}
 	}
 
 	// Index tunnel by fwmark for the current-tunnel lookup.
@@ -5108,6 +5179,13 @@ func (c *Clients) Run(ctx context.Context) error {
 			cl.Route = "wan"
 		}
 		switch {
+		case !topo.AllowlistEnabled:
+			// No MAC allowlist is in effect on this install — there is no
+			// "allowed vs blocked" axis to show. Labelling everyone blocked
+			// would be factually wrong (nothing is being dropped) and
+			// labelling everyone allowed would imply a policy that does
+			// not exist. n/a is the honest answer.
+			cl.AllowlistStatus = "n/a"
 		case cl.MAC == "":
 			cl.AllowlistStatus = "n/a"
 		default:
@@ -6234,6 +6312,18 @@ let
   # --config-file. The schema is described in modules/dashboard/docs/spec.md
   # (search: "Runtime topology via config file"). Keep in sync with
   # internal/topology/topology.go.
+  # router.nftables.allowedMacs is declared `nullOr` in modules/nftables.nix,
+  # so it may be the literal null. Dereferencing .macs on null is a Nix
+  # eval error — guard at the top-level attribute before touching .macs.
+  # The allowlist_enabled boolean is what the Go side uses to decide
+  # between "allowed/blocked" and "n/a"; it must reflect the real option
+  # state, not the length of the MACs list.
+  allowlistEnabled = config.router.nftables.allowedMacs != null;
+  allowlistMacs =
+    if allowlistEnabled
+    then config.router.nftables.allowedMacs.macs
+    else [];
+
   dashboardConfigJson = builtins.toJSON {
     tunnels = map (t: {
       name = t.name;
@@ -6253,10 +6343,8 @@ let
       ip = l.ip;
       name = l.name or "";
     }) config.router.dhcp.staticLeases;
-    allowed_macs =
-      if (config.router.nftables.allowedMacs.macs or null) != null
-      then config.router.nftables.allowedMacs.macs
-      else [];
+    allowlist_enabled = allowlistEnabled;
+    allowed_macs = allowlistMacs;
     lan_interface = config.router.lan.interface;
   };
 
@@ -8168,6 +8256,18 @@ export function VpnPoolDetail() {
     return (clients.data?.data.clients ?? []).filter((c) => set.has(c.ip));
   }, [pool, clients.data]);
 
+  // Distinguish "still loading" from "pool really missing". On a cold
+  // navigation the pools query has not resolved yet, so `pools.data` is
+  // undefined and `pool` is falsy — if we immediately rendered the
+  // not-found branch we'd flash a 404 on every page refresh for a valid
+  // pool before replacing it a few hundred ms later.
+  if (pools.isPending || !pools.data) {
+    return (
+      <Layout title={`VPN / Pools / ${name}`}>
+        <p className="pt-8 font-mono text-sm text-on-surface-variant">Loading…</p>
+      </Layout>
+    );
+  }
   if (!pool) {
     return (
       <Layout title={`VPN / Pools / ${name}`}>
@@ -8308,16 +8408,21 @@ import { api, type Client } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
-type Filter = "all" | "vpn" | "wan" | "static" | "blocked";
+type Filter = "all" | "vpn" | "wan" | "static" | "unknown";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All Devices" },
   { key: "vpn", label: "On VPN" },
   { key: "wan", label: "Direct to WAN" },
   { key: "static", label: "Static Leases" },
-  { key: "blocked", label: "Blocked" },
+  { key: "unknown", label: "Unknown" },
 ];
 
+// "Unknown" matches devices that don't have a stable identity on this
+// LAN — no hostname, neighbour-discovered (not leased), or carrying an
+// allowlist_status of "blocked" (actively rejected by the MAC allowlist).
+// This mirrors the "Unknown" filter pill in designs/02-clients.html and
+// lets the owner quickly spot anything unexpected on the network.
 function matchesFilter(c: Client, filter: Filter): boolean {
   switch (filter) {
     case "all":
@@ -8328,8 +8433,8 @@ function matchesFilter(c: Client, filter: Filter): boolean {
       return c.route === "wan";
     case "static":
       return c.lease_type === "static";
-    case "blocked":
-      return c.allowlist_status === "blocked";
+    case "unknown":
+      return c.lease_type === "neighbor" || c.hostname === "" || c.allowlist_status === "blocked";
   }
 }
 
