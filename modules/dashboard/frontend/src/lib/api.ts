@@ -72,9 +72,8 @@ export type Client = {
   lease_type: string;
   last_seen: string;
   route: string;
-  current_tunnel: string;
   allowlist_status: string;
-  flow_count: number;
+  conn_count: number;
   dns_queries_1h: number;
 };
 export type TopDomain = { domain: string; count: number };
