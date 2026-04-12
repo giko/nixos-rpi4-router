@@ -1,5 +1,5 @@
 module github.com/giko/nixos-rpi4-router/modules/dashboard/backend
 
-go 1.25.0
+go 1.22
 
 require golang.org/x/sync v0.20.0
