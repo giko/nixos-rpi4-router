@@ -150,26 +150,33 @@ func (c *Clients) Run(ctx context.Context) error {
 		if pool, ok := c.poolByIP[cl.IP]; ok {
 			cl.Route = "pool:" + pool
 		} else {
-			// Non-pooled client: check if any connection has a tunnel mark.
-			if info, ok := connInfo[cl.IP]; ok && len(info.TunnelConns) > 0 {
-				// Pick the tunnel with the most connections.
-				var bestTun string
-				var bestCount int
+			// Non-pooled client: pick the configured tunnel with the
+			// most connections. We only consider marks that resolve to
+			// a known tunnel (ignoring e.g. the 0x10000 WAN-forced mark
+			// used by the router) and tie-break deterministically by
+			// tunnel name so a split of equal connections doesn't flap
+			// the displayed route between refreshes.
+			cl.Route = "wan"
+			if info, ok := connInfo[cl.IP]; ok {
+				type tunStat struct {
+					name  string
+					count int
+				}
+				var stats []tunStat
 				for mark, count := range info.TunnelConns {
-					if count > bestCount {
-						bestCount = count
-						if tun, ok := c.tunnelByMark[mark]; ok {
-							bestTun = tun
-						}
+					if tun, ok := c.tunnelByMark[mark]; ok {
+						stats = append(stats, tunStat{name: tun, count: count})
 					}
 				}
-				if bestTun != "" {
-					cl.Route = "tunnel:" + bestTun
-				} else {
-					cl.Route = "wan"
+				if len(stats) > 0 {
+					sort.Slice(stats, func(i, j int) bool {
+						if stats[i].count != stats[j].count {
+							return stats[i].count > stats[j].count
+						}
+						return stats[i].name < stats[j].name
+					})
+					cl.Route = "tunnel:" + stats[0].name
 				}
-			} else {
-				cl.Route = "wan"
 			}
 		}
 
