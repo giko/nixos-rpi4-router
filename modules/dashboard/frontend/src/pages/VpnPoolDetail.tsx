@@ -104,9 +104,24 @@ export function VpnPoolDetail() {
     refetchInterval: 5_000,
   });
 
-  // Loading guard: avoid 404 flash on cold navigation
-  if (poolsQ.isPending || !poolsQ.data) {
+  // Wait for BOTH queries. The stat tiles and member-distribution table
+  // derive their counts from client.tunnel_conns, so rendering before
+  // clients resolve would flash 0 connections on direct navigation.
+  // Also catches the cold-nav 404 flash that was present before.
+  if (
+    poolsQ.isPending ||
+    !poolsQ.data ||
+    clientsQ.isPending ||
+    !clientsQ.data
+  ) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
+  }
+  if (clientsQ.isError) {
+    return (
+      <div className="text-sm text-rose font-mono">
+        Failed to load client data — pool counts unavailable.
+      </div>
+    );
   }
 
   const pool: Pool | undefined = poolsQ.data.data.pools.find(
