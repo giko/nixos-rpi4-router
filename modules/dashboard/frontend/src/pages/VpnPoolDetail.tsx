@@ -121,13 +121,24 @@ export function VpnPoolDetail() {
 
   const allClients: Client[] = clientsQ.data?.data.clients ?? [];
   const poolClientIps = new Set(pool.client_ips);
+  // Pool-scoped connection count: sum only the tunnel_conns entries whose
+  // fwmark belongs to this pool. Using the global `conn_count` here would
+  // attribute unrelated LAN/WAN traffic to the pool.
+  const poolFwmarks = pool.members.map((m) => m.fwmark);
   const routedClients: RoutedClient[] = allClients
     .filter((c) => poolClientIps.has(c.ip))
-    .map((c) => ({
-      hostname: c.hostname,
-      ip: c.ip,
-      conn_count: c.conn_count,
-    }));
+    .map((c) => {
+      const tunnelConns = c.tunnel_conns ?? {};
+      const poolScopedConns = poolFwmarks.reduce(
+        (sum, mark) => sum + (tunnelConns[mark] ?? 0),
+        0,
+      );
+      return {
+        hostname: c.hostname,
+        ip: c.ip,
+        conn_count: poolScopedConns,
+      };
+    });
 
   return (
     <div className="space-y-6">

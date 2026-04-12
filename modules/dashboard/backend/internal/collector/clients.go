@@ -138,9 +138,15 @@ func (c *Clients) Run(ctx context.Context) error {
 	for i := range clients {
 		cl := &clients[i]
 
-		// Connection count from conntrack cold tier.
+		// Connection count + per-tunnel breakdown from conntrack cold tier.
 		if info, ok := connInfo[cl.IP]; ok {
 			cl.ConnCount = info.TotalConns
+			if len(info.TunnelConns) > 0 {
+				cl.TunnelConns = make(map[string]int, len(info.TunnelConns))
+				for mark, count := range info.TunnelConns {
+					cl.TunnelConns[mark] = count
+				}
+			}
 		}
 
 		// Route derivation — based on pool membership (from topology),
