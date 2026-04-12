@@ -32,6 +32,7 @@ export type System = {
 export type InterfaceSample = { rx_bps: number; tx_bps: number };
 export type Interface = {
   name: string;
+  operstate: string; // "up" | "down" | "unknown"
   rx_bps: number;
   tx_bps: number;
   rx_bytes_total: number;

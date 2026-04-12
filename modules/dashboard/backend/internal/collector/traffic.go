@@ -2,7 +2,10 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
@@ -101,6 +104,7 @@ func (t *Traffic) Run(_ context.Context) error {
 
 		ifaces = append(ifaces, model.Interface{
 			Name:         name,
+			Operstate:    readOperstate(name),
 			RXBps:        rxBps,
 			TXBps:        txBps,
 			RXBytesTotal: cur.RXBytes,
@@ -114,6 +118,16 @@ func (t *Traffic) Run(_ context.Context) error {
 
 	t.opts.State.SetTraffic(model.Traffic{Interfaces: ifaces})
 	return nil
+}
+
+// readOperstate reads /sys/class/net/<name>/operstate. Returns "unknown"
+// on any error (e.g. running on a Mac where sysfs doesn't exist).
+func readOperstate(name string) string {
+	b, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/operstate", name))
+	if err != nil {
+		return "unknown"
+	}
+	return strings.TrimSpace(string(b))
 }
 
 // rateBps computes the bit rate from a byte counter delta over elapsed seconds.
