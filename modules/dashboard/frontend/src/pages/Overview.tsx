@@ -216,11 +216,20 @@ type Alert = { level: "rose" | "amber"; message: string };
 function CriticalAlerts({
   pools,
   tempC,
+  wanOperstate,
 }: {
   pools: Pool[] | undefined;
   tempC: number | undefined;
+  wanOperstate: string | undefined;
 }) {
   const alerts: Alert[] = [];
+
+  if (wanOperstate !== undefined && wanOperstate !== "up") {
+    alerts.push({
+      level: "rose",
+      message: `WAN link ${wanOperstate} — no internet`,
+    });
+  }
 
   if (pools) {
     for (const p of pools) {
@@ -401,7 +410,11 @@ export function Overview() {
         updatedAt={trafficQ.data?.updated_at ?? null}
       />
 
-      <CriticalAlerts pools={pools} tempC={system?.temperature_c} />
+      <CriticalAlerts
+        pools={pools}
+        tempC={system?.temperature_c}
+        wanOperstate={traffic?.interfaces.find((i) => i.name === "eth1")?.operstate}
+      />
 
       <QuickStats
         system={system}
