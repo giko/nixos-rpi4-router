@@ -215,6 +215,37 @@ func TestIsStale(t *testing.T) {
 	}
 }
 
+func TestClientFwmarksRoundTrip(t *testing.T) {
+	s := New()
+	s.SetClientFwmarks(map[string]string{"192.168.1.10": "0x20000"})
+
+	got, ts := s.SnapshotClientFwmarks()
+	if got["192.168.1.10"] != "0x20000" {
+		t.Errorf("fwmark = %q, want %q", got["192.168.1.10"], "0x20000")
+	}
+	if ts.IsZero() {
+		t.Error("expected non-zero updated time")
+	}
+
+	// Mutating snapshot must not mutate state.
+	got["192.168.1.10"] = "changed"
+	got2, _ := s.SnapshotClientFwmarks()
+	if got2["192.168.1.10"] != "0x20000" {
+		t.Error("state mutated through snapshot")
+	}
+}
+
+func TestClientFwmarksZeroValue(t *testing.T) {
+	s := New()
+	got, ts := s.SnapshotClientFwmarks()
+	if len(got) != 0 {
+		t.Errorf("expected empty map, got %d entries", len(got))
+	}
+	if !ts.IsZero() {
+		t.Errorf("expected zero updated_at, got %v", ts)
+	}
+}
+
 func TestConcurrentReadersAndWriter(t *testing.T) {
 	s := New()
 	const goroutines = 10
@@ -249,6 +280,9 @@ func TestConcurrentReadersAndWriter(t *testing.T) {
 					s.SetAdguard(model.AdguardStats{
 						Queries24h: j,
 					})
+					s.SetClientFwmarks(map[string]string{
+						"192.168.1.10": "0x20000",
+					})
 				} else {
 					// Readers (odd IDs).
 					s.SnapshotTraffic()
@@ -258,6 +292,7 @@ func TestConcurrentReadersAndWriter(t *testing.T) {
 					s.SnapshotClients()
 					s.SnapshotClient("192.168.1.10")
 					s.SnapshotAdguard()
+					s.SnapshotClientFwmarks()
 				}
 			}
 		}(i)
