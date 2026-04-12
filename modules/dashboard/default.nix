@@ -2,6 +2,43 @@
 
 let
   cfg = config.router.dashboard;
+
+  routerLib = import ../lib.nix { inherit lib; };
+  tunnelMeta = routerLib.tunnelMeta config.router.wireguard.tunnels;
+
+  # Guard allowedMacs — it's declared nullOr in nftables.nix.
+  # Dereferencing .macs on null is a Nix eval error.
+  allowlistEnabled = config.router.nftables.allowedMacs != null;
+  allowlistMacs =
+    if allowlistEnabled
+    then config.router.nftables.allowedMacs.macs
+    else [];
+
+  dashboardConfigJson = builtins.toJSON {
+    tunnels = map (t: {
+      name = t.name;
+      interface = t.name;
+      fwmark = t.fwmarkHex;
+      routing_table = t.routingTable;
+    }) tunnelMeta;
+    pools = lib.mapAttrsToList (name: members: {
+      inherit name members;
+    }) config.router.pbr.pools;
+    pooled_rules = map (r: {
+      sources = r.sources;
+      pool = r.pool;
+    }) config.router.pbr.pooledRules;
+    static_leases = map (l: {
+      mac = l.mac;
+      ip = l.ip;
+      name = if l.name != null then l.name else "";
+    }) config.router.dhcp.staticLeases;
+    allowlist_enabled = allowlistEnabled;
+    allowed_macs = allowlistMacs;
+    lan_interface = config.router.lan.interface;
+  };
+
+  dashboardConfigFile = pkgs.writeText "dashboard-config.json" dashboardConfigJson;
 in
 {
   options.router.dashboard = {
@@ -111,7 +148,8 @@ in
         ExecStart = "${cfg.package}/bin/dashboard"
           + " --bind=${cfg.bindAddress}:${toString cfg.port}"
           + " --adguard-url=${cfg.adguardUrl}"
-          + " --log-level=${cfg.logLevel}";
+          + " --log-level=${cfg.logLevel}"
+          + " --config-file=${dashboardConfigFile}";
         Restart = "on-failure";
         RestartSec = 3;
 
@@ -140,6 +178,7 @@ in
         # Without the prefix, systemd refuses to start the unit if any
         # listed path is missing.
         ReadOnlyPaths = [
+          "${dashboardConfigFile}"
           "-/run/wg-pool-health"
           "-/var/lib/dnsmasq"
           "-/sys/class/thermal"
