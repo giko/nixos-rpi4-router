@@ -5,24 +5,72 @@ import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { Sidebar } from "./Sidebar";
 
+// Derives overall system status from traffic (WAN link) and pools
+// (tunnel health). These queries are already cached by TanStack Query
+// from the Overview page, so no extra network cost.
 function HealthPip() {
-  const { data, isError } = useQuery({
-    queryKey: queryKeys.health(),
-    queryFn: api.health,
-    refetchInterval: 10_000,
+  const trafficQ = useQuery({
+    queryKey: queryKeys.traffic(),
+    queryFn: api.traffic,
+    refetchInterval: 5_000,
+  });
+  const poolsQ = useQuery({
+    queryKey: queryKeys.pools(),
+    queryFn: api.pools,
+    refetchInterval: 5_000,
   });
 
-  const ok = data?.ok === true && !isError;
+  const wanIf = trafficQ.data?.data?.interfaces?.find(
+    (i) => i.name === "eth1",
+  );
+  const wanUp = wanIf?.operstate === "up";
+  const pools = poolsQ.data?.data?.pools ?? [];
+  const totalMembers = pools.reduce((n, p) => n + p.members.length, 0);
+  const healthyMembers = pools.reduce(
+    (n, p) => n + p.members.filter((m) => m.healthy).length,
+    0,
+  );
+
+  // Determine aggregate status
+  let label: string;
+  let color: "emerald" | "amber" | "rose";
+
+  if (!trafficQ.data) {
+    // Still loading
+    label = "Loading";
+    color = "amber";
+  } else if (!wanUp) {
+    label = "WAN Down";
+    color = "rose";
+  } else if (totalMembers > 0 && healthyMembers === 0) {
+    label = "Pools Down";
+    color = "rose";
+  } else if (totalMembers > 0 && healthyMembers < totalMembers) {
+    label = "Degraded";
+    color = "amber";
+  } else {
+    label = "Healthy";
+    color = "emerald";
+  }
+
   return (
     <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
       <span
         className={cn(
           "inline-block h-1.5 w-1.5 rounded-full",
-          ok ? "bg-emerald" : "bg-rose",
+          color === "emerald" && "bg-emerald",
+          color === "amber" && "bg-amber",
+          color === "rose" && "bg-rose",
         )}
       />
-      <span className={ok ? "text-emerald" : "text-rose"}>
-        {ok ? "Healthy" : "Unhealthy"}
+      <span
+        className={cn(
+          color === "emerald" && "text-emerald",
+          color === "amber" && "text-amber",
+          color === "rose" && "text-rose",
+        )}
+      >
+        {label}
       </span>
     </span>
   );
