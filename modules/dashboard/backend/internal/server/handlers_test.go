@@ -225,6 +225,107 @@ func TestPoolsHandler(t *testing.T) {
 	}
 }
 
+func TestClientsHandler(t *testing.T) {
+	st := state.New()
+	st.SetClients([]model.Client{
+		{Hostname: "desktop", IP: "192.168.1.10", MAC: "aa:bb:cc:00:00:01", LeaseType: "static", Route: "pool:vpn_pool"},
+		{Hostname: "phone", IP: "192.168.1.50", MAC: "aa:bb:cc:dd:ee:01", LeaseType: "dynamic", Route: "wan"},
+	})
+
+	h := New(&config.Config{}, st, &topology.Topology{})
+	req := httptest.NewRequest(http.MethodGet, "/api/clients", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+
+	var env struct {
+		Data struct {
+			Clients []model.Client `json:"clients"`
+		} `json:"data"`
+		UpdatedAt *string `json:"updated_at"`
+		Stale     bool    `json:"stale"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(env.Data.Clients) != 2 {
+		t.Fatalf("expected 2 clients, got %d", len(env.Data.Clients))
+	}
+	if env.Data.Clients[0].Hostname != "desktop" {
+		t.Errorf("clients[0].Hostname = %q, want desktop", env.Data.Clients[0].Hostname)
+	}
+	if env.UpdatedAt == nil {
+		t.Error("updated_at should not be null")
+	}
+	if env.Stale {
+		t.Error("stale should be false for fresh data")
+	}
+}
+
+func TestClientDetailHandler(t *testing.T) {
+	st := state.New()
+	st.SetClients([]model.Client{
+		{Hostname: "desktop", IP: "192.168.1.10", MAC: "aa:bb:cc:00:00:01", LeaseType: "static"},
+	})
+
+	h := New(&config.Config{}, st, &topology.Topology{})
+
+	// Found.
+	req := httptest.NewRequest(http.MethodGet, "/api/clients/192.168.1.10", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("detail found: status = %d, want 200", rec.Code)
+	}
+
+	var env struct {
+		Data      model.Client `json:"data"`
+		UpdatedAt *string      `json:"updated_at"`
+		Stale     bool         `json:"stale"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if env.Data.IP != "192.168.1.10" {
+		t.Errorf("IP = %q, want 192.168.1.10", env.Data.IP)
+	}
+	if env.Data.Hostname != "desktop" {
+		t.Errorf("Hostname = %q, want desktop", env.Data.Hostname)
+	}
+
+	// Not found.
+	req = httptest.NewRequest(http.MethodGet, "/api/clients/10.0.0.1", nil)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("detail not found: status = %d, want 404", rec.Code)
+	}
+
+	var errEnv struct {
+		Data struct {
+			Error string `json:"error"`
+			IP    string `json:"ip"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errEnv); err != nil {
+		t.Fatalf("decode 404: %v", err)
+	}
+	if errEnv.Data.Error != "client not found" {
+		t.Errorf("error = %q, want 'client not found'", errEnv.Data.Error)
+	}
+	if errEnv.Data.IP != "10.0.0.1" {
+		t.Errorf("ip = %q, want 10.0.0.1", errEnv.Data.IP)
+	}
+}
+
 func TestTrafficHandlerStaleWhenNeverUpdated(t *testing.T) {
 	st := state.New()
 	// Never call SetTraffic -- data is zero-time, should be stale.

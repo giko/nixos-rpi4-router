@@ -90,6 +90,8 @@ func New(_ *config.Config, st *state.State, _ *topology.Topology) http.Handler {
 	mux.HandleFunc("GET /api/system", handleSystem(st))
 	mux.HandleFunc("GET /api/tunnels", handleTunnels(st))
 	mux.HandleFunc("GET /api/pools", handlePools(st))
+	mux.HandleFunc("GET /api/clients", handleClients(st))
+	mux.HandleFunc("GET /api/clients/{ip}", handleClientDetail(st))
 
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see
 	// comment above New.
