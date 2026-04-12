@@ -49,11 +49,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-          # Cache on go.mod because the backend is stdlib-only and
-          # `go build` never produces a go.sum. Using go.sum as the
-          # cache key would fail in setup-go before the build starts.
-          cache-dependency-path: modules/dashboard/backend/go.mod
+          go-version-file: modules/dashboard/backend/go.mod
+          cache-dependency-path: modules/dashboard/backend/go.sum
 
       - name: Compute version
         id: meta
