@@ -131,27 +131,46 @@ func (c *Clients) Run(ctx context.Context) error {
 		// Neighbour failure is non-fatal; we already have leases.
 	}
 
-	// 4. Enrich with fwmarks and route derivation.
-	fwmarks, _ := c.opts.State.SnapshotClientFwmarks()
+	// 4. Enrich with connection info and route derivation.
+	connInfo, _ := c.opts.State.SnapshotClientConns()
 
 	now := time.Now()
 	for i := range clients {
 		cl := &clients[i]
 
-		// CurrentTunnel from fwmark.
-		if mark, ok := fwmarks[cl.IP]; ok {
-			if tun, ok := c.tunnelByMark[mark]; ok {
-				cl.CurrentTunnel = tun
-			}
+		// Connection count from conntrack cold tier.
+		if info, ok := connInfo[cl.IP]; ok {
+			cl.ConnCount = info.TotalConns
 		}
 
-		// Route derivation.
+		// Route derivation — based on pool membership (from topology),
+		// not on individual connection marks. In a round-robin pool,
+		// a client's connections are spread across ALL tunnels, so
+		// there is no single "current tunnel".
 		if pool, ok := c.poolByIP[cl.IP]; ok {
 			cl.Route = "pool:" + pool
-		} else if cl.CurrentTunnel != "" {
-			cl.Route = "tunnel:" + cl.CurrentTunnel
 		} else {
-			cl.Route = "wan"
+			// Non-pooled client: check if any connection has a tunnel mark.
+			if info, ok := connInfo[cl.IP]; ok && len(info.TunnelConns) > 0 {
+				// Pick the tunnel with the most connections.
+				var bestTun string
+				var bestCount int
+				for mark, count := range info.TunnelConns {
+					if count > bestCount {
+						bestCount = count
+						if tun, ok := c.tunnelByMark[mark]; ok {
+							bestTun = tun
+						}
+					}
+				}
+				if bestTun != "" {
+					cl.Route = "tunnel:" + bestTun
+				} else {
+					cl.Route = "wan"
+				}
+			} else {
+				cl.Route = "wan"
+			}
 		}
 
 		// Allowlist status.

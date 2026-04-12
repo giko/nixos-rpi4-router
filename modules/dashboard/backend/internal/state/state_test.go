@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
 )
 
 func TestNewStateHasZeroValues(t *testing.T) {
@@ -215,29 +216,34 @@ func TestIsStale(t *testing.T) {
 	}
 }
 
-func TestClientFwmarksRoundTrip(t *testing.T) {
+func TestClientConnsRoundTrip(t *testing.T) {
 	s := New()
-	s.SetClientFwmarks(map[string]string{"192.168.1.10": "0x20000"})
+	s.SetClientConns(map[string]conntrack.ClientConnInfo{
+		"192.168.1.10": {TotalConns: 5, TunnelConns: map[string]int{"0x20000": 3}},
+	})
 
-	got, ts := s.SnapshotClientFwmarks()
-	if got["192.168.1.10"] != "0x20000" {
-		t.Errorf("fwmark = %q, want %q", got["192.168.1.10"], "0x20000")
+	got, ts := s.SnapshotClientConns()
+	if got["192.168.1.10"].TotalConns != 5 {
+		t.Errorf("TotalConns = %d, want 5", got["192.168.1.10"].TotalConns)
+	}
+	if got["192.168.1.10"].TunnelConns["0x20000"] != 3 {
+		t.Errorf("TunnelConns[0x20000] = %d, want 3", got["192.168.1.10"].TunnelConns["0x20000"])
 	}
 	if ts.IsZero() {
 		t.Error("expected non-zero updated time")
 	}
 
 	// Mutating snapshot must not mutate state.
-	got["192.168.1.10"] = "changed"
-	got2, _ := s.SnapshotClientFwmarks()
-	if got2["192.168.1.10"] != "0x20000" {
+	got["192.168.1.10"] = conntrack.ClientConnInfo{}
+	got2, _ := s.SnapshotClientConns()
+	if got2["192.168.1.10"].TotalConns != 5 {
 		t.Error("state mutated through snapshot")
 	}
 }
 
-func TestClientFwmarksZeroValue(t *testing.T) {
+func TestClientConnsZeroValue(t *testing.T) {
 	s := New()
-	got, ts := s.SnapshotClientFwmarks()
+	got, ts := s.SnapshotClientConns()
 	if len(got) != 0 {
 		t.Errorf("expected empty map, got %d entries", len(got))
 	}
@@ -280,8 +286,8 @@ func TestConcurrentReadersAndWriter(t *testing.T) {
 					s.SetAdguard(model.AdguardStats{
 						Queries24h: j,
 					})
-					s.SetClientFwmarks(map[string]string{
-						"192.168.1.10": "0x20000",
+					s.SetClientConns(map[string]conntrack.ClientConnInfo{
+						"192.168.1.10": {TotalConns: 5, TunnelConns: map[string]int{"0x20000": 3}},
 					})
 				} else {
 					// Readers (odd IDs).
@@ -292,7 +298,7 @@ func TestConcurrentReadersAndWriter(t *testing.T) {
 					s.SnapshotClients()
 					s.SnapshotClient("192.168.1.10")
 					s.SnapshotAdguard()
-					s.SnapshotClientFwmarks()
+					s.SnapshotClientConns()
 				}
 			}
 		}(i)

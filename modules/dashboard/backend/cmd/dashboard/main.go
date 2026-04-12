@@ -79,7 +79,7 @@ func main() {
 			PoolHealthPath: "/run/wg-pool-health/state.json",
 			State:          st,
 		}),
-		collector.NewClientFwmarks(collector.ClientFwmarksOpts{State: st}),
+		collector.NewClientConns(collector.ClientConnsOpts{State: st}),
 		collector.NewPoolFlows(collector.PoolFlowsOpts{Topology: topo, State: st}),
 		collector.NewClients(collector.ClientsOpts{
 			Topology:   topo,
