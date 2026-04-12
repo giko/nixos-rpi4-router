@@ -33,6 +33,9 @@ type State struct {
 
 	adguard        model.AdguardStats
 	adguardUpdated time.Time
+
+	clientFwmarks        map[string]string
+	clientFwmarksUpdated time.Time
 }
 
 // New returns an initialized State with zero values.
@@ -164,6 +167,31 @@ func (s *State) SnapshotAdguard() (model.AdguardStats, time.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return copyAdguard(s.adguard), s.adguardUpdated
+}
+
+// --- Client Fwmarks ---
+
+// SetClientFwmarks replaces the cached client fwmark map with a defensive copy.
+func (s *State) SetClientFwmarks(m map[string]string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clientFwmarks = make(map[string]string, len(m))
+	for k, v := range m {
+		s.clientFwmarks[k] = v
+	}
+	s.clientFwmarksUpdated = time.Now().UTC()
+}
+
+// SnapshotClientFwmarks returns a defensive copy of the cached client fwmark
+// map and its update time.
+func (s *State) SnapshotClientFwmarks() (map[string]string, time.Time) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make(map[string]string, len(s.clientFwmarks))
+	for k, v := range s.clientFwmarks {
+		out[k] = v
+	}
+	return out, s.clientFwmarksUpdated
 }
 
 // --- Staleness ---
