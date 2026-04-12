@@ -1,16 +1,32 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Pool } from "@/lib/api";
+import type { Pool, Client } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { MonoText } from "@/components/MonoText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StaleIndicator } from "@/components/StaleIndicator";
 
-function PoolCard({ pool }: { pool: Pool }) {
+// poolScopedConns sums client.tunnel_conns for every client assigned to
+// this pool, restricted to the pool's tunnel fwmarks. Kept in sync with
+// the pool detail page so both surfaces report the same totals even if
+// a tunnel is shared with non-pool routing rules.
+function poolScopedConns(pool: Pool, clients: Client[]): number {
+  const clientIps = new Set(pool.client_ips);
+  const fwmarks = pool.members.map((m) => m.fwmark);
+  let total = 0;
+  for (const c of clients) {
+    if (!clientIps.has(c.ip)) continue;
+    const tc = c.tunnel_conns ?? {};
+    for (const mark of fwmarks) total += tc[mark] ?? 0;
+  }
+  return total;
+}
+
+function PoolCard({ pool, clients }: { pool: Pool; clients: Client[] }) {
   const healthy = pool.members.filter((m) => m.healthy).length;
   const total = pool.members.length;
-  const totalFlows = pool.members.reduce((s, m) => s + m.flow_count, 0);
+  const totalConns = poolScopedConns(pool, clients);
   const allHealthy = healthy === total && total > 0;
   const noneHealthy = healthy === 0 && total > 0;
 
@@ -39,7 +55,7 @@ function PoolCard({ pool }: { pool: Pool }) {
       <div className="flex gap-4 text-xs text-on-surface-variant">
         <span>
           Connections:{" "}
-          <MonoText>{totalFlows.toLocaleString()}</MonoText>
+          <MonoText>{totalConns.toLocaleString()}</MonoText>
         </span>
         <span>
           Clients:{" "}
@@ -56,12 +72,18 @@ export function VpnPools() {
     queryFn: api.pools,
     refetchInterval: 5_000,
   });
+  const clientsQ = useQuery({
+    queryKey: queryKeys.clients(),
+    queryFn: api.clients,
+    refetchInterval: 5_000,
+  });
 
   if (poolsQ.isPending) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
   }
 
   const pools = poolsQ.data?.data.pools ?? [];
+  const clients = clientsQ.data?.data.clients ?? [];
 
   return (
     <div className="space-y-4">
@@ -75,7 +97,7 @@ export function VpnPools() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {pools.map((pool) => (
-          <PoolCard key={pool.name} pool={pool} />
+          <PoolCard key={pool.name} pool={pool} clients={clients} />
         ))}
         {pools.length === 0 && (
           <p className="text-sm text-on-surface-variant font-mono col-span-full">
