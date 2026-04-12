@@ -198,3 +198,33 @@ func TestSystemPreservesMediumTierFields(t *testing.T) {
 		t.Errorf("Services not preserved: %v", snap.Services)
 	}
 }
+
+func TestSystemMediumDoesNotClobberHotFields(t *testing.T) {
+	st := state.New()
+
+	// Seed state with known hot-tier values.
+	st.SetSystem(model.SystemStats{
+		TemperatureC: 55.0,
+		Memory: model.MemoryStats{
+			TotalBytes: 100,
+		},
+	})
+
+	mc := NewSystemMedium(SystemMediumOpts{
+		Units: nil, // no units — systemd.Collect returns nil, nil
+		State: st,
+	})
+
+	// Run will fail for vcgencmd on Mac — that's expected.
+	// The collector still merges what it can.
+	_ = mc.Run(context.Background())
+
+	snap, _ := st.SnapshotSystem()
+
+	if snap.TemperatureC != 55.0 {
+		t.Errorf("TemperatureC = %f, want 55.0 (preserved)", snap.TemperatureC)
+	}
+	if snap.Memory.TotalBytes != 100 {
+		t.Errorf("Memory.TotalBytes = %d, want 100 (preserved)", snap.Memory.TotalBytes)
+	}
+}
