@@ -12,8 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/collector"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/server"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
 
 func main() {
@@ -37,14 +40,46 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	slog.SetDefault(logger)
 
-	httpServer := &http.Server{
-		Addr:              cfg.Bind,
-		Handler:           server.New(cfg),
-		ReadHeaderTimeout: 5 * time.Second,
+	topo, err := topology.Load(cfg.ConfigFile)
+	if err != nil {
+		slog.Error("load topology", "err", err)
+		os.Exit(1)
+	}
+
+	st := state.New()
+
+	// Build interface list: physical + tunnel interfaces.
+	ifaces := []string{"eth0", "eth1"}
+	for _, tun := range topo.Tunnels {
+		ifaces = append(ifaces, tun.Interface)
+	}
+
+	collectors := []collector.Collector{
+		collector.NewTraffic(collector.TrafficOpts{
+			NetDevPath: "/proc/net/dev",
+			Interfaces: ifaces,
+			State:      st,
+		}),
+		collector.NewSystem(collector.SystemOpts{
+			StatPath:    "/proc/stat",
+			MeminfoPath: "/proc/meminfo",
+			ThermalPath: "/sys/class/thermal/thermal_zone0/temp",
+			UptimePath:  "/proc/uptime",
+			State:       st,
+		}),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	runner := collector.NewRunner(logger, collectors)
+	runner.Start(ctx)
+
+	httpServer := &http.Server{
+		Addr:              cfg.Bind,
+		Handler:           server.New(cfg, st, topo),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -67,4 +102,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	runner.Wait()
 }
