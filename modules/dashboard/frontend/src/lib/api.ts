@@ -74,6 +74,9 @@ export type Client = {
   route: string;
   allowlist_status: string;
   conn_count: number;
+  // tunnel_conns maps fwmark (hex like "0x20000") → connection count.
+  // Use this for pool-scoped counts; conn_count is the global total.
+  tunnel_conns: Record<string, number> | null;
   dns_queries_1h: number;
 };
 export type TopDomain = { domain: string; count: number };
