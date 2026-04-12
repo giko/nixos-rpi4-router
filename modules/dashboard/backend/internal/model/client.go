@@ -10,8 +10,16 @@ type Client struct {
 	LastSeen        time.Time `json:"last_seen"`
 	Route           string    `json:"route"`
 	AllowlistStatus string    `json:"allowlist_status"`
-	ConnCount       int       `json:"conn_count"` // total tracked connections from conntrack
-	DNSQueries1h    int       `json:"dns_queries_1h"`
+	// ConnCount is the total number of tracked connections for this client
+	// across every destination (WAN, LAN, VPN). For pool-scoped counts,
+	// use TunnelConns keyed by the pool's tunnel fwmarks.
+	ConnCount int `json:"conn_count"`
+	// TunnelConns is the per-tunnel connection breakdown, keyed by hex
+	// fwmark. Only non-zero marks are included. A client whose
+	// connections are round-robined across a pool has entries here for
+	// every healthy tunnel.
+	TunnelConns  map[string]int `json:"tunnel_conns"`
+	DNSQueries1h int            `json:"dns_queries_1h"`
 }
 
 type ClientDetail struct {
