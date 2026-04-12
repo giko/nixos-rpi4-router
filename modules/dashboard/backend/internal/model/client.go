@@ -9,9 +9,8 @@ type Client struct {
 	LeaseType       string    `json:"lease_type"`
 	LastSeen        time.Time `json:"last_seen"`
 	Route           string    `json:"route"`
-	CurrentTunnel   string    `json:"current_tunnel"`
 	AllowlistStatus string    `json:"allowlist_status"`
-	FlowCount       int       `json:"flow_count"`
+	ConnCount       int       `json:"conn_count"` // total tracked connections from conntrack
 	DNSQueries1h    int       `json:"dns_queries_1h"`
 }
 
