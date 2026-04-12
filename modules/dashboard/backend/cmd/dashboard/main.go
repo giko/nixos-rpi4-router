@@ -15,6 +15,7 @@ import (
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/collector"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/server"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/ipneigh"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
@@ -79,6 +80,14 @@ func main() {
 		}),
 		collector.NewClientFwmarks(collector.ClientFwmarksOpts{State: st}),
 		collector.NewPoolFlows(collector.PoolFlowsOpts{Topology: topo, State: st}),
+		collector.NewClients(collector.ClientsOpts{
+			Topology:   topo,
+			LeasesPath: "/var/lib/dnsmasq/dnsmasq.leases",
+			State:      st,
+			Neigh: func(ctx context.Context) (map[string]string, error) {
+				return ipneigh.Collect(ctx, ipneigh.DefaultRunner)
+			},
+		}),
 		collector.NewSystemMedium(collector.SystemMediumOpts{
 			Units: []string{
 				"nftables.service", "dnsmasq.service", "adguardhome.service",
