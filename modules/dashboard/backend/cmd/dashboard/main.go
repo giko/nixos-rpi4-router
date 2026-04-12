@@ -72,6 +72,11 @@ func main() {
 			PoolHealthPath: "/run/wg-pool-health/state.json",
 			State:          st,
 		}),
+		collector.NewPools(collector.PoolsOpts{
+			Topology:       topo,
+			PoolHealthPath: "/run/wg-pool-health/state.json",
+			State:          st,
+		}),
 		collector.NewSystemMedium(collector.SystemMediumOpts{
 			Units: []string{
 				"nftables.service", "dnsmasq.service", "adguardhome.service",
