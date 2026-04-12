@@ -2,8 +2,10 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
@@ -233,5 +235,122 @@ func TestPoolsCollectorPreservesFlowCount(t *testing.T) {
 	}
 	if pools[0].Members[0].FlowCount != 42 {
 		t.Errorf("FlowCount = %d, want 42 (should be preserved from previous state)", pools[0].Members[0].FlowCount)
+	}
+}
+
+func TestPoolFlowsMergesCountsIntoExistingPools(t *testing.T) {
+	topo := &topology.Topology{
+		Tunnels: []topology.Tunnel{
+			{Name: "wg_sw", Interface: "wg_sw", Fwmark: "0x20000", RoutingTable: 200},
+			{Name: "wg_us", Interface: "wg_us", Fwmark: "0x30000", RoutingTable: 300},
+		},
+		Pools: []topology.Pool{
+			{Name: "vpn_pool", Members: []string{"wg_sw", "wg_us"}},
+		},
+	}
+
+	st := state.New()
+
+	// Seed pools (as if the hot-tier Pools collector already ran).
+	st.SetPools([]model.Pool{
+		{
+			Name: "vpn_pool",
+			Members: []model.PoolMember{
+				{Tunnel: "wg_sw", Fwmark: "0x20000", Healthy: true, FlowCount: 0},
+				{Tunnel: "wg_us", Fwmark: "0x30000", Healthy: true, FlowCount: 0},
+			},
+			ClientIPs: []string{"192.168.1.10"},
+		},
+	})
+
+	// Fake conntrack runner: return different flow counts per fwmark.
+	fakeRun := func(_ context.Context, args ...string) (string, error) {
+		// conntrack.CountByFwmark calls: conntrack -L -m <fwmark>
+		if len(args) >= 3 && args[0] == "-L" && args[1] == "-m" {
+			switch args[2] {
+			case "0x20000":
+				return "line1\nline2\nline3\n", nil // 3 flows
+			case "0x30000":
+				return "line1\n", nil // 1 flow
+			}
+		}
+		return "", fmt.Errorf("unexpected args: %s", strings.Join(args, " "))
+	}
+
+	c := NewPoolFlows(PoolFlowsOpts{
+		Topology: topo,
+		Run:      fakeRun,
+		State:    st,
+	})
+
+	if c.Name() != "pool-flows" {
+		t.Errorf("Name() = %q, want %q", c.Name(), "pool-flows")
+	}
+	if c.Tier() != Cold {
+		t.Errorf("Tier() = %v, want Cold", c.Tier())
+	}
+
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	pools, _ := st.SnapshotPools()
+	if len(pools) != 1 {
+		t.Fatalf("expected 1 pool, got %d", len(pools))
+	}
+
+	p := pools[0]
+	if len(p.Members) != 2 {
+		t.Fatalf("expected 2 members, got %d", len(p.Members))
+	}
+
+	if p.Members[0].FlowCount != 3 {
+		t.Errorf("wg_sw FlowCount = %d, want 3", p.Members[0].FlowCount)
+	}
+	if p.Members[1].FlowCount != 1 {
+		t.Errorf("wg_us FlowCount = %d, want 1", p.Members[1].FlowCount)
+	}
+
+	// Verify other fields are preserved.
+	if p.Name != "vpn_pool" {
+		t.Errorf("pool name = %q, want %q", p.Name, "vpn_pool")
+	}
+	if len(p.ClientIPs) != 1 || p.ClientIPs[0] != "192.168.1.10" {
+		t.Errorf("client IPs = %v, want [192.168.1.10]", p.ClientIPs)
+	}
+}
+
+func TestPoolFlowsEmptyState(t *testing.T) {
+	topo := &topology.Topology{
+		Tunnels: []topology.Tunnel{
+			{Name: "wg_sw", Interface: "wg_sw", Fwmark: "0x20000", RoutingTable: 200},
+		},
+		Pools: []topology.Pool{
+			{Name: "vpn_pool", Members: []string{"wg_sw"}},
+		},
+	}
+
+	st := state.New()
+
+	// No pools seeded -- PoolFlows should not crash.
+	fakeRun := func(_ context.Context, args ...string) (string, error) {
+		return "line1\n", nil
+	}
+
+	c := NewPoolFlows(PoolFlowsOpts{
+		Topology: topo,
+		Run:      fakeRun,
+		State:    st,
+	})
+
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// With no pre-existing pools, the snapshot is empty and SetPools
+	// is called with an empty slice -- no crash expected.
+	pools, _ := st.SnapshotPools()
+	if len(pools) != 0 {
+		t.Errorf("expected 0 pools (none seeded), got %d", len(pools))
 	}
 }

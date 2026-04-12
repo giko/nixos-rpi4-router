@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/poolhealth"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
@@ -98,6 +99,66 @@ func (c *Pools) Run(_ context.Context) error {
 			ClientIPs:          clientIPs,
 			FailsafeDropActive: failsafe,
 		})
+	}
+
+	c.opts.State.SetPools(pools)
+	return nil
+}
+
+// --- PoolFlows (cold tier) ---
+
+// PoolFlowsOpts configures the PoolFlows collector.
+type PoolFlowsOpts struct {
+	Topology *topology.Topology
+	Run      conntrack.Runner // nil -> DefaultRunner
+	State    *state.State
+}
+
+// PoolFlows is a cold-tier collector that counts per-tunnel active flows
+// via conntrack and merges the counts into the existing pool state.
+type PoolFlows struct {
+	opts PoolFlowsOpts
+}
+
+// NewPoolFlows creates a PoolFlows collector.
+func NewPoolFlows(opts PoolFlowsOpts) *PoolFlows {
+	if opts.Run == nil {
+		opts.Run = conntrack.DefaultRunner
+	}
+	return &PoolFlows{opts: opts}
+}
+
+func (*PoolFlows) Name() string { return "pool-flows" }
+func (*PoolFlows) Tier() Tier   { return Cold }
+
+// Run performs a single collection pass.
+func (c *PoolFlows) Run(ctx context.Context) error {
+	// Collect distinct fwmarks from the topology and count flows per tunnel.
+	counts := make(map[string]int)
+	seen := make(map[string]bool)
+
+	for _, tt := range c.opts.Topology.Tunnels {
+		if tt.Fwmark == "" || seen[tt.Fwmark] {
+			continue
+		}
+		seen[tt.Fwmark] = true
+
+		n, err := conntrack.CountByFwmark(ctx, c.opts.Run, tt.Fwmark)
+		if err != nil {
+			slog.Warn("pool-flows: count failed", "tunnel", tt.Name, "fwmark", tt.Fwmark, "err", err)
+			continue
+		}
+		counts[tt.Name] = n
+	}
+
+	// Merge flow counts into existing pool state.
+	pools, _ := c.opts.State.SnapshotPools()
+	for i := range pools {
+		for j := range pools[i].Members {
+			if n, ok := counts[pools[i].Members[j].Tunnel]; ok {
+				pools[i].Members[j].FlowCount = n
+			}
+		}
 	}
 
 	c.opts.State.SetPools(pools)
