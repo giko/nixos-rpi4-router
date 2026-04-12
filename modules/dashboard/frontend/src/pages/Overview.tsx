@@ -66,7 +66,7 @@ function HealthStrip({
   pools: Pool[] | undefined;
 }) {
   const wanColor = system
-    ? serviceColor(system.services, "nftables")
+    ? serviceColor(system.services, "nftables.service")
     : "amber";
   const wanValue = wanColor === "emerald" ? "ONLINE" : "DOWN";
   const wanDetail = system
@@ -74,11 +74,11 @@ function HealthStrip({
     : "loading...";
 
   const dnsColor = system
-    ? serviceColor(system.services, "adguardhome")
+    ? serviceColor(system.services, "adguardhome.service")
     : "amber";
   const dnsValue = dnsColor === "emerald" ? "RESOLVING" : "DOWN";
   const dnsDetail = system
-    ? serviceColor(system.services, "adguardhome") === "emerald"
+    ? serviceColor(system.services, "adguardhome.service") === "emerald"
       ? "adguardhome active"
       : "adguardhome inactive"
     : "loading...";
