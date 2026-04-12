@@ -37,7 +37,7 @@ jobs:
       - name: Build frontend
         working-directory: modules/dashboard/frontend
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Copy frontend dist into backend embed directory
