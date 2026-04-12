@@ -8,10 +8,12 @@ import (
 	"testing"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	h := New(&config.Config{})
+	h := New(&config.Config{}, state.New(), &topology.Topology{})
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -43,7 +45,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestUnknownAPIPathReturnsJSON404(t *testing.T) {
-	h := New(&config.Config{})
+	h := New(&config.Config{}, state.New(), &topology.Topology{})
 	req := httptest.NewRequest(http.MethodGet, "/api/does-not-exist", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -66,7 +68,7 @@ func TestUnknownAPIPathReturnsJSON404(t *testing.T) {
 }
 
 func TestRootServesSPA(t *testing.T) {
-	h := New(&config.Config{})
+	h := New(&config.Config{}, state.New(), &topology.Topology{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -84,7 +86,7 @@ func TestRootServesSPA(t *testing.T) {
 // through to the / catch-all, which serves the SPA shell — a real bug
 // for any client or probe that hits the API base URL.
 func TestApiRootPathReturnsJSON404(t *testing.T) {
-	h := New(&config.Config{})
+	h := New(&config.Config{}, state.New(), &topology.Topology{})
 	req := httptest.NewRequest(http.MethodGet, "/api", nil)
 	// Worst case: browser-style Accept header. With the SPA handler reachable,
 	// this would return HTML + 200. With the /api exact-path registration,
