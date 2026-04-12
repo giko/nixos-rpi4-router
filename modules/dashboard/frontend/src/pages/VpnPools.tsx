@@ -78,33 +78,41 @@ export function VpnPools() {
     refetchInterval: 5_000,
   });
 
-  // Wait for BOTH queries — the cards' connection counts are derived from
-  // client.tunnel_conns, so rendering before clients resolve would flash
-  // zeroes even on busy pools. The clients query also surfaces errors
-  // (e.g. /api/clients unavailable) that would otherwise silently
-  // degrade every count to zero.
-  if (poolsQ.isPending || clientsQ.isPending) {
-    return <div className="text-sm text-on-surface-variant">Loading...</div>;
-  }
-  if (clientsQ.isError) {
+  // Error first, loading second — React Query leaves data undefined and
+  // sets isError=true on cold-fetch failure. A !data check first would
+  // hang forever on "Loading...".
+  if (poolsQ.isError || clientsQ.isError) {
     return (
       <div className="text-sm text-rose font-mono">
-        Failed to load client data — pool counts unavailable.
+        Failed to load pool data — retry shortly.
       </div>
     );
+  }
+  if (poolsQ.isPending || clientsQ.isPending) {
+    return <div className="text-sm text-on-surface-variant">Loading...</div>;
   }
 
   const pools = poolsQ.data?.data.pools ?? [];
   const clients = clientsQ.data?.data.clients ?? [];
+  // The page derives counts from BOTH envelopes, so the freshness badge
+  // must reflect whichever is staler (and the older updated_at). A fresh
+  // `/api/pools` can otherwise mask stale client data.
+  const combinedStale =
+    (poolsQ.data?.stale ?? false) || (clientsQ.data?.stale ?? false);
+  const poolsUpdated = poolsQ.data?.updated_at ?? null;
+  const clientsUpdated = clientsQ.data?.updated_at ?? null;
+  const combinedUpdatedAt =
+    poolsUpdated && clientsUpdated
+      ? poolsUpdated < clientsUpdated
+        ? poolsUpdated
+        : clientsUpdated
+      : (poolsUpdated ?? clientsUpdated);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">VPN Pools</h1>
-        <StaleIndicator
-          stale={poolsQ.data?.stale ?? false}
-          updatedAt={poolsQ.data?.updated_at ?? null}
-        />
+        <StaleIndicator stale={combinedStale} updatedAt={combinedUpdatedAt} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

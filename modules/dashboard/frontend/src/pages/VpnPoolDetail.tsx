@@ -104,10 +104,20 @@ export function VpnPoolDetail() {
     refetchInterval: 5_000,
   });
 
-  // Wait for BOTH queries. The stat tiles and member-distribution table
-  // derive their counts from client.tunnel_conns, so rendering before
+  // Check error state FIRST. On a failed cold fetch, React Query leaves
+  // `data` undefined AND sets `isError=true`; if we checked !data first
+  // we'd hang forever on "Loading..." because the error branch below
+  // would be unreachable.
+  if (poolsQ.isError || clientsQ.isError) {
+    return (
+      <div className="text-sm text-rose font-mono">
+        Failed to load pool data — retry shortly.
+      </div>
+    );
+  }
+  // Then wait for BOTH queries. The stat tiles and member-distribution
+  // table derive counts from client.tunnel_conns, so rendering before
   // clients resolve would flash 0 connections on direct navigation.
-  // Also catches the cold-nav 404 flash that was present before.
   if (
     poolsQ.isPending ||
     !poolsQ.data ||
@@ -115,13 +125,6 @@ export function VpnPoolDetail() {
     !clientsQ.data
   ) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
-  }
-  if (clientsQ.isError) {
-    return (
-      <div className="text-sm text-rose font-mono">
-        Failed to load client data — pool counts unavailable.
-      </div>
-    );
   }
 
   const pool: Pool | undefined = poolsQ.data.data.pools.find(
@@ -141,6 +144,19 @@ export function VpnPoolDetail() {
       </div>
     );
   }
+
+  // Pool counts mix pools + clients envelopes, so stale indicator must
+  // reflect the staler of the two (with the older updated_at).
+  const combinedStale =
+    (poolsQ.data?.stale ?? false) || (clientsQ.data?.stale ?? false);
+  const poolsUpdated = poolsQ.data?.updated_at ?? null;
+  const clientsUpdated = clientsQ.data?.updated_at ?? null;
+  const combinedUpdatedAt =
+    poolsUpdated && clientsUpdated
+      ? poolsUpdated < clientsUpdated
+        ? poolsUpdated
+        : clientsUpdated
+      : (poolsUpdated ?? clientsUpdated);
 
   const healthy = pool.members.filter((m) => m.healthy).length;
 
@@ -198,10 +214,7 @@ export function VpnPoolDetail() {
           </Link>
           <h1 className="text-lg font-semibold">{pool.name}</h1>
         </div>
-        <StaleIndicator
-          stale={poolsQ.data.stale}
-          updatedAt={poolsQ.data.updated_at}
-        />
+        <StaleIndicator stale={combinedStale} updatedAt={combinedUpdatedAt} />
       </div>
 
       {/* Stat tiles */}
