@@ -5,10 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/adguard"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
@@ -343,5 +347,35 @@ func TestTrafficHandlerStaleWhenNeverUpdated(t *testing.T) {
 	}
 	if !env.Stale {
 		t.Error("stale should be true when data was never updated")
+	}
+}
+
+func TestAdguardQueryLogCacheSingleflight(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		time.Sleep(30 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	cache := newQueryLogCache(adguard.NewClient(srv.URL, srv.Client()))
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r := httptest.NewRequest("GET", "/api/adguard/querylog?limit=10", nil)
+			_, err := cache.fetch(r)
+			if err != nil {
+				t.Errorf("fetch: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if hits.Load() > 2 {
+		t.Errorf("expected <=2 upstream hits (singleflight), got %d", hits.Load())
 	}
 }

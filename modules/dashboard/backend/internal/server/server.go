@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/adguard"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/spa"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
@@ -81,7 +82,7 @@ func readVersion() string {
 // does not unify them when a /-catch-all is also present: without the bare
 // /api registration, a GET /api falls through to the SPA handler and
 // returns the HTML shell instead of a JSON error.
-func New(_ *config.Config, st *state.State, _ *topology.Topology) http.Handler {
+func New(cfg *config.Config, st *state.State, _ *topology.Topology) http.Handler {
 	mux := http.NewServeMux()
 
 	// Specific API routes first.
@@ -92,6 +93,10 @@ func New(_ *config.Config, st *state.State, _ *topology.Topology) http.Handler {
 	mux.HandleFunc("GET /api/pools", handlePools(st))
 	mux.HandleFunc("GET /api/clients", handleClients(st))
 	mux.HandleFunc("GET /api/clients/{ip}", handleClientDetail(st))
+	mux.HandleFunc("GET /api/adguard/stats", handleAdguardStats(st))
+
+	qlCache := newQueryLogCache(adguard.NewClient(cfg.AdguardURL, nil))
+	mux.HandleFunc("GET /api/adguard/querylog", handleAdguardQueryLog(qlCache))
 
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see
 	// comment above New.
