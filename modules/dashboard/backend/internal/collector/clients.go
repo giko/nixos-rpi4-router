@@ -134,13 +134,18 @@ func (c *Clients) Run(ctx context.Context) error {
 	// 4. Enrich with connection info and route derivation.
 	connInfo, _ := c.opts.State.SnapshotClientConns()
 
-	// 4a. Synthesise clients for conntrack-only IPs that aren't in any
-	// lease or neighbour record. Without this, a static-IP device with
-	// an aged-out ARP entry (common on server subnets) would silently
-	// disappear from the clients list — and, more importantly, from
-	// pool connection totals that aggregate client.tunnel_conns.
+	// 4a. Synthesise clients for LAN conntrack-only IPs not in any lease
+	// or neighbour record. Without this, a static-IP device with an
+	// aged-out ARP entry would silently disappear from pool totals.
+	// We filter to LAN ranges because `conntrack -L` uses the first
+	// src= field, which for DNAT'd inbound port-forwards is a public
+	// internet peer — synthesising those would pollute the clients list
+	// with remote IPs labelled as local devices.
 	for ip := range connInfo {
 		if _, ok := seen[ip]; ok {
+			continue
+		}
+		if !c.isLANAddress(ip) {
 			continue
 		}
 		seen[ip] = struct{}{}
@@ -226,6 +231,33 @@ func (c *Clients) Run(ctx context.Context) error {
 
 	c.opts.State.SetClients(clients)
 	return nil
+}
+
+// isLANAddress reports whether ip belongs to any of the private
+// IPv4 ranges we treat as LAN for client synthesis. This stays a
+// conservative superset rather than a tight match against the LAN
+// subnets from topology — public (non-RFC-1918) addresses should
+// never become synthesised clients even if they show up in conntrack.
+func (*Clients) isLANAddress(ip string) bool {
+	addr := net.ParseIP(ip)
+	if addr == nil {
+		return false
+	}
+	v4 := addr.To4()
+	if v4 == nil {
+		return false
+	}
+	// 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+	if v4[0] == 10 {
+		return true
+	}
+	if v4[0] == 172 && v4[1] >= 16 && v4[1] <= 31 {
+		return true
+	}
+	if v4[0] == 192 && v4[1] == 168 {
+		return true
+	}
+	return false
 }
 
 // compareIPs compares two IPv4 address strings numerically.
