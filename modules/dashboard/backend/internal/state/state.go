@@ -18,8 +18,13 @@ import (
 type State struct {
 	mu sync.RWMutex
 
-	system        model.SystemStats
-	systemUpdated time.Time
+	// system holds the merged view across hot (CPU/memory/temp/uptime) and
+	// medium (services/throttled) tiers. Each tier tracks its own
+	// updated_at so a stale hot pass can't mask a fresh medium pass and
+	// vice versa.
+	system              model.SystemStats
+	systemHotUpdated    time.Time
+	systemMediumUpdated time.Time
 
 	traffic        model.Traffic
 	trafficUpdated time.Time
@@ -47,20 +52,87 @@ func New() *State {
 
 // --- System ---
 
-// SetSystem replaces the cached system stats with a defensive copy.
+// SetSystem replaces the cached system stats with a defensive copy and
+// stamps both hot and medium updated_at. Retained for tests and legacy
+// callers that still want a one-shot seed; production collectors should
+// use SetSystemHot / SetSystemMedium so each tier's freshness is tracked
+// independently.
 func (s *State) SetSystem(v model.SystemStats) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.system = copySystem(v)
-	s.systemUpdated = time.Now()
+	now := time.Now()
+	s.systemHotUpdated = now
+	s.systemMediumUpdated = now
 }
 
-// SnapshotSystem returns a defensive copy of the cached system stats and its
-// update time.
+// SetSystemHot updates only hot-tier system fields (CPU / memory / temp /
+// uptime / boot time). Medium-tier fields (Services, Throttled,
+// ThrottledFlag) are preserved under the state mutex. This avoids the
+// snapshot-modify-replace race where a slower hot pass could clobber
+// fresh medium data.
+func (s *State) SetSystemHot(cpu model.CPUStats, mem model.MemoryStats, temp float64, uptime float64, boot time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.system.CPU = cpu
+	s.system.Memory = mem
+	s.system.TemperatureC = temp
+	s.system.UptimeSeconds = uptime
+	s.system.BootTime = boot
+	s.systemHotUpdated = time.Now()
+}
+
+// SetSystemMedium updates only medium-tier system fields (Services,
+// Throttled, ThrottledFlag). Hot-tier fields are preserved.
+func (s *State) SetSystemMedium(services []model.ServiceState, throttled string, throttledFlag bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if services != nil {
+		cp := make([]model.ServiceState, len(services))
+		copy(cp, services)
+		s.system.Services = cp
+	} else {
+		s.system.Services = nil
+	}
+	s.system.Throttled = throttled
+	s.system.ThrottledFlag = throttledFlag
+	s.systemMediumUpdated = time.Now()
+}
+
+// SnapshotSystem returns a defensive copy of the merged system stats and
+// the oldest of the hot/medium update timestamps. Using the oldest
+// ensures that a stale tier still surfaces through the handler's
+// freshness check instead of being masked by a fresher sibling.
 func (s *State) SnapshotSystem() (model.SystemStats, time.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return copySystem(s.system), s.systemUpdated
+	return copySystem(s.system), oldest(s.systemHotUpdated, s.systemMediumUpdated)
+}
+
+// SnapshotSystemTiers returns a copy of the cached system stats together
+// with the hot-tier and medium-tier updated_at timestamps. Handlers can
+// use whichever timestamp is relevant for the field they serve, or the
+// oldest (via SnapshotSystem) for the merged view.
+func (s *State) SnapshotSystemTiers() (model.SystemStats, time.Time, time.Time) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return copySystem(s.system), s.systemHotUpdated, s.systemMediumUpdated
+}
+
+// oldest returns the earlier of two times, treating zero as "newest" so
+// a never-populated tier doesn't drag the merged timestamp to zero.
+// When both are zero the result is zero (genuinely never populated).
+func oldest(a, b time.Time) time.Time {
+	if a.IsZero() {
+		return b
+	}
+	if b.IsZero() {
+		return a
+	}
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
 
 // --- Traffic ---

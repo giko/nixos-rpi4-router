@@ -216,6 +216,101 @@ func TestIsStale(t *testing.T) {
 	}
 }
 
+func TestSetSystemHotPreservesMediumFields(t *testing.T) {
+	s := New()
+
+	// Seed medium-tier fields.
+	s.SetSystemMedium(
+		[]model.ServiceState{{Name: "nftables", Active: true, RawState: "active"}},
+		"0x50000", true,
+	)
+
+	// Hot write must not clobber medium values.
+	s.SetSystemHot(
+		model.CPUStats{PercentUser: 42},
+		model.MemoryStats{TotalBytes: 1024},
+		55.5,
+		123.4,
+		time.Unix(1700000000, 0).UTC(),
+	)
+
+	snap, _ := s.SnapshotSystem()
+	if snap.CPU.PercentUser != 42 {
+		t.Errorf("PercentUser = %v, want 42", snap.CPU.PercentUser)
+	}
+	if snap.TemperatureC != 55.5 {
+		t.Errorf("TemperatureC = %v, want 55.5", snap.TemperatureC)
+	}
+	if snap.Throttled != "0x50000" || !snap.ThrottledFlag {
+		t.Errorf("medium fields lost: throttled=%q flag=%v", snap.Throttled, snap.ThrottledFlag)
+	}
+	if len(snap.Services) != 1 || snap.Services[0].Name != "nftables" {
+		t.Errorf("services lost: %+v", snap.Services)
+	}
+}
+
+func TestSetSystemMediumPreservesHotFields(t *testing.T) {
+	s := New()
+
+	s.SetSystemHot(
+		model.CPUStats{PercentUser: 42},
+		model.MemoryStats{TotalBytes: 1024},
+		55.5, 123.4,
+		time.Unix(1700000000, 0).UTC(),
+	)
+
+	s.SetSystemMedium(
+		[]model.ServiceState{{Name: "dnsmasq", Active: true}},
+		"0x0", false,
+	)
+
+	snap, _ := s.SnapshotSystem()
+	if snap.CPU.PercentUser != 42 {
+		t.Errorf("CPU lost: %+v", snap.CPU)
+	}
+	if snap.TemperatureC != 55.5 {
+		t.Errorf("TemperatureC lost: %v", snap.TemperatureC)
+	}
+	if snap.Memory.TotalBytes != 1024 {
+		t.Errorf("Memory lost: %+v", snap.Memory)
+	}
+	if len(snap.Services) != 1 || snap.Services[0].Name != "dnsmasq" {
+		t.Errorf("services wrong: %+v", snap.Services)
+	}
+}
+
+func TestSnapshotSystemTiersIndependentTimestamps(t *testing.T) {
+	s := New()
+
+	beforeHot := time.Now()
+	s.SetSystemHot(model.CPUStats{}, model.MemoryStats{}, 0, 0, time.Time{})
+	afterHot := time.Now()
+
+	// Wait past clock resolution so medium stamp is strictly greater.
+	time.Sleep(2 * time.Millisecond)
+
+	beforeMed := time.Now()
+	s.SetSystemMedium(nil, "0x0", false)
+	afterMed := time.Now()
+
+	_, hot, med := s.SnapshotSystemTiers()
+	if hot.Before(beforeHot) || hot.After(afterHot) {
+		t.Errorf("hot updated_at %v out of [%v, %v]", hot, beforeHot, afterHot)
+	}
+	if med.Before(beforeMed) || med.After(afterMed) {
+		t.Errorf("medium updated_at %v out of [%v, %v]", med, beforeMed, afterMed)
+	}
+	if !hot.Before(med) {
+		t.Errorf("expected hot (%v) to be before medium (%v)", hot, med)
+	}
+
+	// SnapshotSystem's timestamp should equal the oldest (hot) tier.
+	_, combined := s.SnapshotSystem()
+	if !combined.Equal(hot) {
+		t.Errorf("SnapshotSystem ts = %v, want oldest %v", combined, hot)
+	}
+}
+
 func TestClientConnsRoundTrip(t *testing.T) {
 	s := New()
 	s.SetClientConns(map[string]conntrack.ClientConnInfo{
