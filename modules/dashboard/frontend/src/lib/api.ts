@@ -33,6 +33,11 @@ export type InterfaceSample = { rx_bps: number; tx_bps: number };
 export type Interface = {
   name: string;
   operstate: string; // "up" | "down" | "unknown"
+  // role is populated from the backend topology and is one of
+  // "wan" | "lan" | "tunnel" | "". Empty string means the backend
+  // could not classify the interface (or is running an older build
+  // without the field).
+  role: string;
   rx_bps: number;
   tx_bps: number;
   rx_bytes_total: number;

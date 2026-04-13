@@ -167,9 +167,9 @@ function ThroughputCard({ traffic, stale, updatedAt }: {
   stale: boolean;
   updatedAt: string | null;
 }) {
-  const eth1 = traffic?.interfaces.find((i) => i.name === "eth1");
-  const rxSamples = eth1?.samples_60s.map((s) => s.rx_bps) ?? [];
-  const txSamples = eth1?.samples_60s.map((s) => s.tx_bps) ?? [];
+  const wan = traffic?.interfaces.find((i) => i.role === "wan");
+  const rxSamples = wan?.samples_60s.map((s) => s.rx_bps) ?? [];
+  const txSamples = wan?.samples_60s.map((s) => s.tx_bps) ?? [];
 
   return (
     <div className="col-span-8 bg-surface-container rounded-sm p-4">
@@ -181,13 +181,13 @@ function ThroughputCard({ traffic, stale, updatedAt }: {
         <div>
           <span className="text-xs text-on-surface-variant">RX</span>
           <MonoText className="ml-2 text-sm">
-            {eth1 ? formatBps(eth1.rx_bps) : "--"}
+            {wan ? formatBps(wan.rx_bps) : "--"}
           </MonoText>
         </div>
         <div>
           <span className="text-xs text-on-surface-variant">TX</span>
           <MonoText className="ml-2 text-sm">
-            {eth1 ? formatBps(eth1.tx_bps) : "--"}
+            {wan ? formatBps(wan.tx_bps) : "--"}
           </MonoText>
         </div>
       </div>
@@ -396,12 +396,19 @@ export function Overview() {
   const clients = clientsQ.data?.data.clients;
   const adguard = adguardQ.data?.data;
 
+  // Find the WAN interface by backend-provided role so the UI works on
+  // deployments with non-default uplink names. Falls through to
+  // undefined (rendered as "unknown" / loading) if the backend has not
+  // yet populated the field.
+  const wanOperstate = traffic?.interfaces.find((i) => i.role === "wan")
+    ?.operstate;
+
   return (
     <div className="grid grid-cols-12 gap-4">
       <HealthStrip
         system={system}
         pools={pools}
-        wanOperstate={traffic?.interfaces.find((i) => i.name === "eth1")?.operstate}
+        wanOperstate={wanOperstate}
       />
 
       <ThroughputCard
@@ -413,7 +420,7 @@ export function Overview() {
       <CriticalAlerts
         pools={pools}
         tempC={system?.temperature_c}
-        wanOperstate={traffic?.interfaces.find((i) => i.name === "eth1")?.operstate}
+        wanOperstate={wanOperstate}
       />
 
       <QuickStats

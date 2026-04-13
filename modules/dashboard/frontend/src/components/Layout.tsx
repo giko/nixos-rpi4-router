@@ -20,10 +20,14 @@ function HealthPip() {
     refetchInterval: 5_000,
   });
 
+  // Prefer the backend-provided role over a hardcoded interface name so
+  // deployments with custom uplinks work. If role is missing (older
+  // backend), treat WAN status as unknown rather than reporting "down".
   const wanIf = trafficQ.data?.data?.interfaces?.find(
-    (i) => i.name === "eth1",
+    (i) => i.role === "wan",
   );
   const wanUp = wanIf?.operstate === "up";
+  const wanKnown = wanIf !== undefined;
   const pools = poolsQ.data?.data?.pools ?? [];
   const totalMembers = pools.reduce((n, p) => n + p.members.length, 0);
   const healthyMembers = pools.reduce(
@@ -38,6 +42,9 @@ function HealthPip() {
   if (!trafficQ.data) {
     // Still loading
     label = "Loading";
+    color = "amber";
+  } else if (!wanKnown) {
+    label = "WAN Unknown";
     color = "amber";
   } else if (!wanUp) {
     label = "WAN Down";
