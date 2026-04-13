@@ -262,19 +262,35 @@ export function Adguard() {
   const topBlocked = stats?.top_blocked ?? [];
   const topClients = stats?.top_clients ?? [];
 
+  if (statsQ.isError && !statsQ.data) {
+    return (
+      <div className="text-sm text-rose font-mono">
+        Failed to load AdGuard stats — retry shortly.
+      </div>
+    );
+  }
   if (statsQ.isPending) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
   }
+
+  const refetchFailed = statsQ.isError;
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">AdGuard DNS</h1>
-        <StaleIndicator
-          stale={statsQ.data?.stale ?? false}
-          updatedAt={statsQ.data?.updated_at ?? null}
-        />
+        <div className="flex items-center gap-2">
+          {refetchFailed && (
+            <span className="text-[10px] uppercase tracking-wider font-bold bg-rose/10 text-rose px-2 py-0.5 rounded-sm">
+              Refetch failed
+            </span>
+          )}
+          <StaleIndicator
+            stale={statsQ.data?.stale ?? false}
+            updatedAt={statsQ.data?.updated_at ?? null}
+          />
+        </div>
       </div>
 
       {/* Stats tiles */}

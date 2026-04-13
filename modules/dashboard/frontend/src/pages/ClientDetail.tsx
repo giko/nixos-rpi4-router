@@ -89,16 +89,14 @@ export function ClientDetail() {
     },
   });
 
-  /* Loading */
-  if (clientQ.isPending) {
-    return <div className="text-sm text-on-surface-variant">Loading...</div>;
-  }
-
-  /* Error: distinguish a real 404 ("no such client") from transient
-   * fetch failures (5xx, network drops) so users don't see a misleading
-   * "not found" during backend hiccups. fetchEnvelope throws Error with
-   * "<path> → <status>" — match on 404 in the message. */
-  if (clientQ.isError || !clientQ.data) {
+  /* Cold-failure guard: distinguish a real 404 ("no such client") from
+   * transient fetch failures (5xx, network drops) so users don't see a
+   * misleading "not found" during backend hiccups. fetchEnvelope throws
+   * Error with "<path> → <status>" — match on 404 in the message. Only
+   * replace the whole view when there is NO cached data yet; refetch
+   * failures after a successful first load fall through to the main
+   * render with a small "Refetch failed" chip in the header. */
+  if (clientQ.isError && !clientQ.data) {
     const msg =
       clientQ.error instanceof Error ? clientQ.error.message : "";
     const notFound = msg.includes("404");
@@ -119,7 +117,13 @@ export function ClientDetail() {
     );
   }
 
+  /* Loading */
+  if (clientQ.isPending || !clientQ.data) {
+    return <div className="text-sm text-on-surface-variant">Loading...</div>;
+  }
+
   const client = clientQ.data.data;
+  const refetchFailed = clientQ.isError;
 
   return (
     <div className="space-y-6">
@@ -136,10 +140,17 @@ export function ClientDetail() {
             {client.hostname || client.ip}
           </h1>
         </div>
-        <StaleIndicator
-          stale={clientQ.data.stale}
-          updatedAt={clientQ.data.updated_at}
-        />
+        <div className="flex items-center gap-2">
+          {refetchFailed && (
+            <span className="text-[10px] uppercase tracking-wider font-bold bg-rose/10 text-rose px-2 py-0.5 rounded-sm">
+              Refetch failed
+            </span>
+          )}
+          <StaleIndicator
+            stale={clientQ.data.stale}
+            updatedAt={clientQ.data.updated_at}
+          />
+        </div>
       </div>
 
       {/* Two-column detail grid */}

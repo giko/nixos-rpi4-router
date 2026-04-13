@@ -181,19 +181,35 @@ export function Clients() {
       );
   }, [clients, filter, search]);
 
+  if (clientsQ.isError && !clientsQ.data) {
+    return (
+      <div className="text-sm text-rose font-mono">
+        Failed to load clients — retry shortly.
+      </div>
+    );
+  }
   if (clientsQ.isPending) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
   }
+
+  const refetchFailed = clientsQ.isError;
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Clients</h1>
-        <StaleIndicator
-          stale={clientsQ.data?.stale ?? false}
-          updatedAt={clientsQ.data?.updated_at ?? null}
-        />
+        <div className="flex items-center gap-2">
+          {refetchFailed && (
+            <span className="text-[10px] uppercase tracking-wider font-bold bg-rose/10 text-rose px-2 py-0.5 rounded-sm">
+              Refetch failed
+            </span>
+          )}
+          <StaleIndicator
+            stale={clientsQ.data?.stale ?? false}
+            updatedAt={clientsQ.data?.updated_at ?? null}
+          />
+        </div>
       </div>
 
       {/* Filter bar + search */}
