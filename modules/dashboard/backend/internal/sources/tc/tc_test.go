@@ -232,3 +232,53 @@ func TestParseTinValueScaledBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestParseCakeBacklogIgnoresPerTinRow(t *testing.T) {
+	// Synthetic CAKE block where the root has a non-zero backlog and
+	// each tin also has its own (different, non-zero) backlog. The
+	// parser must report the ROOT values, not the per-tin row.
+	raw := `qdisc cake 8003: root refcnt 2 bandwidth 100Mbit diffserv3 triple-isolate
+ Sent 999 bytes 9 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 1500b 3p requeues 0
+ memory used: 5002752b of 5000000b
+
+                   Bulk  Best Effort        Voice
+  thresh       6250Kbit      100Mbit       25Mbit
+  target            5ms          5ms          5ms
+  interval        100ms        100ms        100ms
+  pk_delay        255us       20.7ms         34us
+  av_delay         62us       10.5ms          5us
+  sp_delay          2us          1us          0us
+  backlog          500b         800b         200b
+  pkts             2562     89694157        16692
+  bytes          233357  42173583512      1912611
+  way_inds           12     23401847            5
+  way_miss          782     10359692         1390
+  way_cols            0          230            0
+  drops               0         5613            0
+  marks               0         1424            0
+  ack_drop            0            0            0
+  sp_flows            1           22            0
+  bk_flows            0            1            0
+  un_flows            0            0            0
+  max_len           590        17198         1700
+  quantum           300         1514          762
+`
+	q, err := ParseCAKE(raw)
+	if err != nil {
+		t.Fatalf("ParseCAKE: %v", err)
+	}
+	if q.BacklogBytes != 1500 {
+		t.Errorf("BacklogBytes = %d, want 1500 (the root value, NOT a per-tin one)", q.BacklogBytes)
+	}
+	if q.BacklogPkts != 3 {
+		t.Errorf("BacklogPkts = %d, want 3 (the root value, NOT zero from a tin row)", q.BacklogPkts)
+	}
+	// Sanity: tins should still parse with their own backlog values.
+	if len(q.Tins) != 3 {
+		t.Fatalf("Tins count = %d, want 3", len(q.Tins))
+	}
+	if q.Tins[0].BacklogBytes != 500 || q.Tins[1].BacklogBytes != 800 || q.Tins[2].BacklogBytes != 200 {
+		t.Errorf("Tin backlogs = %d/%d/%d, want 500/800/200", q.Tins[0].BacklogBytes, q.Tins[1].BacklogBytes, q.Tins[2].BacklogBytes)
+	}
+}

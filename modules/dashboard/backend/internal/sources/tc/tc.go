@@ -101,7 +101,14 @@ func ParseCAKE(raw string) (QdiscStats, error) {
 		return QdiscStats{}, fmt.Errorf("tc: no `qdisc cake` block found in CAKE output")
 	}
 	var sawSent bool
-	for _, ln := range cakeLines {
+	tinHeaderIdx := -1
+	for i, ln := range cakeLines {
+		if strings.Contains(ln, "Bulk") && strings.Contains(ln, "Best Effort") {
+			tinHeaderIdx = i
+			break
+		}
+	}
+	for i, ln := range cakeLines {
 		t := strings.TrimSpace(ln)
 		if strings.HasPrefix(t, "qdisc cake") {
 			q.BandwidthBps = parseBandwidth(t)
@@ -111,7 +118,12 @@ func ParseCAKE(raw string) (QdiscStats, error) {
 			q.SentBytes, q.SentPackets, q.Dropped, q.Overlimits, q.Requeues = parseSentLine(t)
 			sawSent = true
 		}
-		if strings.HasPrefix(t, "backlog ") {
+		// Only the root qdisc's `backlog ...` line — which appears before
+		// the per-tin column header — is in the right shape (`Nb Np`).
+		// Lines after the tin header look like `backlog Nb Nb Nb` (one
+		// byte value per tin, no packet count) and would otherwise
+		// overwrite the root values once any tin queues traffic.
+		if strings.HasPrefix(t, "backlog ") && (tinHeaderIdx == -1 || i < tinHeaderIdx) {
 			q.BacklogBytes, q.BacklogPkts = parseBacklogLine(t)
 		}
 	}
