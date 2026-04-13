@@ -72,6 +72,45 @@ func TestClientConnectionsRunnerError(t *testing.T) {
 	}
 }
 
+func TestClientConnectionsAttributesInboundDNATToLANHost(t *testing.T) {
+	// conntrack -L prints the original tuple src/dst followed by the
+	// reply tuple src/dst. For inbound DNAT (port forward), the
+	// original src is the remote peer's public IP — attributing to it
+	// leaves the LAN host at conn_count=0. We want the reply src (LAN).
+	//
+	// Layout on one line:
+	//   orig src=<remote> dst=<wan_ip> sport=... dport=80
+	//   reply src=<lan_host> dst=<remote> sport=8080 dport=...
+	fixture := "ipv4     2 tcp      6 60 src=203.0.113.50 dst=198.51.100.2 sport=54321 dport=80 " +
+		"src=192.168.1.200 dst=203.0.113.50 sport=8080 dport=54321 [ASSURED] mark=0\n" +
+		// A regular outbound session should still attribute to orig src.
+		"ipv4     2 tcp      6 60 src=192.168.1.10 dst=1.1.1.1 sport=5 dport=443 " +
+		"src=1.1.1.1 dst=198.51.100.2 sport=443 dport=5 mark=131072\n"
+
+	fakeRun := func(_ context.Context, _ ...string) (string, error) {
+		return fixture, nil
+	}
+	m, err := ClientConnections(context.Background(), fakeRun)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// DNAT session: LAN host (reply src) must own the count.
+	if m["192.168.1.200"].TotalConns != 1 {
+		t.Errorf(".200 (DNAT) total = %d, want 1; map = %+v", m["192.168.1.200"].TotalConns, m)
+	}
+	// Remote peer public IP must NOT become a client.
+	if _, ok := m["203.0.113.50"]; ok {
+		t.Errorf("remote peer 203.0.113.50 should not be attributed")
+	}
+	// Outbound session still attributes normally.
+	if m["192.168.1.10"].TotalConns != 1 {
+		t.Errorf(".10 outbound total = %d, want 1", m["192.168.1.10"].TotalConns)
+	}
+	if m["192.168.1.10"].TunnelConns["0x20000"] != 1 {
+		t.Errorf(".10 tunnel count = %d, want 1", m["192.168.1.10"].TunnelConns["0x20000"])
+	}
+}
+
 func TestExtractField(t *testing.T) {
 	line := "ipv4     2 tcp      6 60 src=192.168.1.10 dst=1.1.1.1 sport=5 dport=443 mark=131072"
 	tests := []struct {
