@@ -109,3 +109,37 @@ func TestTrafficDropThenReTrackStartsFresh(t *testing.T) {
 		t.Errorf("tx = %d, want 400_000 (fresh start, 500KB delta)", samples[0].TxBps)
 	}
 }
+
+func TestTrafficPerClientSeed(t *testing.T) {
+	a := netip.MustParseAddr("192.168.1.10")
+	b := netip.MustParseAddr("192.168.1.20")
+	keyA := conntrack.FlowKey{Proto: 6, OrigSrcIP: a,
+		OrigDstIP: netip.MustParseAddr("1.2.3.4"), OrigSrcPort: 1, OrigDstPort: 443}
+	keyB := conntrack.FlowKey{Proto: 6, OrigSrcIP: b,
+		OrigDstIP: netip.MustParseAddr("5.6.7.8"), OrigSrcPort: 2, OrigDstPort: 443}
+	c := NewClientTraffic(ClientTrafficOpts{TickDur: 10 * time.Second})
+	c.Track(a)
+	// Tick 1 + Tick 2 for A → A has one sample, B not yet tracked.
+	c.Apply(time.Unix(0, 0), []conntrack.FlowBytes{{Key: keyA, ClientIP: a,
+		Direction: conntrack.DirOutbound, OrigBytes: 1_000_000}})
+	c.Apply(time.Unix(10, 0), []conntrack.FlowBytes{{Key: keyA, ClientIP: a,
+		Direction: conntrack.DirOutbound, OrigBytes: 2_000_000}})
+	sA, _, _ := c.Snapshot(a)
+	if len(sA) != 1 {
+		t.Fatalf("A: want 1 sample, got %d", len(sA))
+	}
+	// Now add B. Its first Apply should be a seed-only for B, but A must still get a sample.
+	c.Track(b)
+	c.Apply(time.Unix(20, 0), []conntrack.FlowBytes{
+		{Key: keyA, ClientIP: a, Direction: conntrack.DirOutbound, OrigBytes: 3_000_000},
+		{Key: keyB, ClientIP: b, Direction: conntrack.DirOutbound, OrigBytes: 5_000_000},
+	})
+	sA2, _, _ := c.Snapshot(a)
+	if len(sA2) != 2 {
+		t.Errorf("A: want 2 samples after B joins, got %d", len(sA2))
+	}
+	sB, _, _ := c.Snapshot(b)
+	if len(sB) != 0 {
+		t.Errorf("B: want 0 samples (first tick is seed-only), got %d", len(sB))
+	}
+}

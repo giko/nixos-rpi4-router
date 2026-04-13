@@ -137,7 +137,9 @@ func (td *TopDestinations) record(ip netip.Addr, domain string, blocked bool, by
 	} else {
 		t.Bytes += bytes
 	}
-	t.LastSeen = now
+	if now.After(t.LastSeen) {
+		t.LastSeen = now
+	}
 
 	// Evict least-recent when over cap.
 	for len(ca.totals) > td.opts.PerClientCap {

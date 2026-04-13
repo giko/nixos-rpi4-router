@@ -119,3 +119,20 @@ func TestTopDestEvictionPurgesBuckets(t *testing.T) {
 		}
 	}
 }
+
+func TestTopDestLastSeenMonotonic(t *testing.T) {
+	td := NewTopDestinations(TopDestOpts{})
+	client := netip.MustParseAddr("192.168.1.42")
+	td.Track(client)
+	t0 := time.Date(2026, 4, 13, 14, 5, 0, 0, time.UTC)
+	// Simulate newest-first ingest: record t0 first, then an earlier t0-5min.
+	td.RecordQuery(client, "netflix.com", false, t0)
+	td.RecordQuery(client, "netflix.com", false, t0.Add(-5*time.Minute))
+	dests := td.Snapshot(client)
+	if len(dests) != 1 {
+		t.Fatalf("want 1 dest, got %d", len(dests))
+	}
+	if !dests[0].LastSeen.Equal(t0) {
+		t.Errorf("LastSeen = %v, want %v (must not regress on older record)", dests[0].LastSeen, t0)
+	}
+}
