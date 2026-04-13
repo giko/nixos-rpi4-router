@@ -103,9 +103,13 @@ func (td *TopDestinations) record(ip netip.Addr, domain string, blocked bool, by
 	}
 	ca.mu.Lock()
 	defer ca.mu.Unlock()
-	ca.rotate(now, td.opts.MinuteBuckets)
 
-	slot := &ca.buckets[ca.head]
+	bucketIdx := ca.rotate(now, td.opts.MinuteBuckets)
+	if bucketIdx < 0 {
+		return // too old; outside the 1h window
+	}
+
+	slot := &ca.buckets[bucketIdx]
 	if slot.perDomain == nil {
 		slot.perDomain = make(map[string]minuteDelta)
 	}
@@ -150,19 +154,38 @@ func (td *TopDestinations) record(ip netip.Addr, domain string, blocked bool, by
 			break
 		}
 		delete(ca.totals, oldestName)
+		// Also purge from all minute buckets so a later rotate() doesn't
+		// subtract stale deltas.
+		for i := range ca.buckets {
+			delete(ca.buckets[i].perDomain, oldestName)
+		}
 	}
 }
 
-func (ca *clientAgg) rotate(now time.Time, buckets int) {
+// rotate updates curMin forward if 'minute' is newer, or returns the
+// index of the bucket representing 'minute' if it falls within the
+// current window. Returns -1 when the minute is older than the full
+// buckets-minute window (caller should drop the record).
+func (ca *clientAgg) rotate(now time.Time, buckets int) int {
 	minute := now.Truncate(time.Minute)
 	if ca.curMin.IsZero() {
 		ca.curMin = minute
 		ca.buckets[ca.head].start = minute
-		return
+		return ca.head
 	}
 	if minute.Equal(ca.curMin) {
-		return
+		return ca.head
 	}
+	if minute.Before(ca.curMin) {
+		// How many minutes behind curMin?
+		diff := ca.curMin.Sub(minute) / time.Minute
+		if int(diff) >= buckets {
+			return -1 // outside window; record too old to account
+		}
+		idx := (ca.head - int(diff) + buckets) % buckets
+		return idx
+	}
+	// Advance forward, expiring old buckets as they age out.
 	for !ca.curMin.Equal(minute) {
 		ca.head = (ca.head + 1) % buckets
 		nextMinute := ca.curMin.Add(time.Minute)
@@ -195,6 +218,7 @@ func (ca *clientAgg) rotate(now time.Time, buckets int) {
 		old.start = nextMinute
 		ca.curMin = nextMinute
 	}
+	return ca.head
 }
 
 func (td *TopDestinations) Advance(now time.Time) {

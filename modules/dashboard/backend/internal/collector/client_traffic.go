@@ -42,6 +42,7 @@ func (r *trafficRing) push(s TrafficSample) {
 
 type flowSnap struct {
 	orig, reply uint64
+	clientIP    netip.Addr
 }
 
 type ClientTraffic struct {
@@ -82,6 +83,12 @@ func (c *ClientTraffic) Drop(ip netip.Addr) {
 	defer c.mu.Unlock()
 	delete(c.tracked, ip)
 	delete(c.rings, ip)
+	for k, v := range c.baseline {
+		if v.clientIP == ip {
+			delete(c.baseline, k)
+		}
+	}
+	c.seeded = false
 }
 
 func (c *ClientTraffic) Apply(now time.Time, snapshot []conntrack.FlowBytes) {
@@ -103,7 +110,7 @@ func (c *ClientTraffic) Apply(now time.Time, snapshot []conntrack.FlowBytes) {
 				reply = fb.ReplyBytes - prev.reply
 			}
 		}
-		next[fb.Key] = flowSnap{orig: fb.OrigBytes, reply: fb.ReplyBytes}
+		next[fb.Key] = flowSnap{orig: fb.OrigBytes, reply: fb.ReplyBytes, clientIP: fb.ClientIP}
 
 		if _, tracked := c.tracked[fb.ClientIP]; !tracked {
 			continue
