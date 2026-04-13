@@ -160,7 +160,7 @@ func (c *Client) FetchQueryLogPage(ctx context.Context, olderThan time.Time, lim
 
 	q := url.Values{}
 	if !olderThan.IsZero() {
-		q.Set("older_than", olderThan.UTC().Format("2006-01-02T15:04:05Z"))
+		q.Set("older_than", olderThan.UTC().Format("2006-01-02T15:04:05.000000000Z"))
 	}
 	q.Set("limit", strconv.Itoa(limit))
 	u.RawQuery = q.Encode()

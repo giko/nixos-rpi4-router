@@ -203,14 +203,18 @@ func normalizeIngest(row rawIngestEntry) (IngestedEntry, bool) {
 }
 
 // hashIngest produces a stable 64-bit dedup key from (time, client IP,
-// question). Collisions across distinct tuples are astronomically
-// unlikely given a 64-bit truncated SHA-256.
+// question, qtype). Collisions across distinct tuples are astronomically
+// unlikely given a 64-bit truncated SHA-256. QType participates so that
+// a dual-stack client issuing an A and AAAA for the same name within a
+// single sub-second window is not folded into one dedup slot.
 func hashIngest(e IngestedEntry) uint64 {
 	h := sha256.New()
 	_ = binary.Write(h, binary.LittleEndian, e.Time.UnixNano())
 	h.Write([]byte(e.ClientIP.String()))
 	h.Write([]byte("|"))
 	h.Write([]byte(e.Question))
+	h.Write([]byte("|"))
+	h.Write([]byte(e.QType))
 	sum := h.Sum(nil)
 	return binary.LittleEndian.Uint64(sum[:8])
 }

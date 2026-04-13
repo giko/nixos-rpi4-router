@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -78,6 +79,52 @@ func TestDnsIngestDedupsOverlap(t *testing.T) {
 	}
 	if requests != 3 {
 		t.Errorf("HTTP requests = %d, want 3", requests)
+	}
+}
+
+// TestDnsIngestDedupKeyIncludesQType asserts that two entries sharing
+// (time, client, question) but differing on QType both survive dedup.
+// A dual-stack client issuing A and AAAA for the same name within a
+// single sub-second window must not collapse into one delivered entry.
+func TestDnsIngestDedupKeyIncludesQType(t *testing.T) {
+	now := time.Date(2026, 4, 13, 15, 0, 0, 0, time.UTC)
+	entries := []map[string]interface{}{
+		{
+			"time":     now.Format(time.RFC3339Nano),
+			"client":   "192.168.1.42",
+			"question": map[string]interface{}{"name": "example.com", "type": "A"},
+			"answer":   []map[string]interface{}{},
+			"reason":   "NotFiltered",
+		},
+		{
+			"time":     now.Format(time.RFC3339Nano),
+			"client":   "192.168.1.42",
+			"question": map[string]interface{}{"name": "example.com", "type": "AAAA"},
+			"answer":   []map[string]interface{}{},
+			"reason":   "NotFiltered",
+		},
+	}
+	raw, _ := json.Marshal(entries)
+	fake := &fakeAdguardClient{responses: []adguard.QueryLogResponse{{Data: raw, Oldest: ""}}}
+
+	var gotTypes []string
+	col := NewDnsIngest(DnsIngestOpts{
+		Adguard: fake,
+		OnEntry: func(e IngestedEntry) { gotTypes = append(gotTypes, e.QType) },
+	})
+	if err := col.Tick(context.Background(), now); err != nil {
+		t.Fatalf("Tick: %v", err)
+	}
+	if len(gotTypes) != 2 {
+		t.Fatalf("expected both A and AAAA, got %v", gotTypes)
+	}
+	// Order is whatever the fixture returns; just check the set.
+	saw := map[string]bool{}
+	for _, q := range gotTypes {
+		saw[q] = true
+	}
+	if !saw["A"] || !saw["AAAA"] {
+		t.Errorf("saw = %v, want both A and AAAA", saw)
 	}
 }
 
