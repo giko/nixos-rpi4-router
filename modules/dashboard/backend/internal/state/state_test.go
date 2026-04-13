@@ -448,6 +448,78 @@ func TestClientConnsZeroValue(t *testing.T) {
 	}
 }
 
+func TestFirewallRoundTrip(t *testing.T) {
+	s := New()
+	in := model.Firewall{
+		PortForwards: []model.PortForward{{Protocol: "tcp", ExternalPort: 35978, Destination: "192.168.20.6:32400"}},
+		PBR: model.PBR{
+			SourceRules: []model.PBRSourceRule{{Sources: []string{"192.168.1.225"}, Tunnel: "wg_sw"}},
+			DomainRules: []model.PBRDomainRule{{Tunnel: "wg_sw", Domains: []string{"example.com"}}},
+			PooledRules: []model.PBRPooledRule{{Sources: []string{"192.168.1.10"}, Pool: "all"}},
+		},
+		AllowedMACs:           []string{"aa:bb:cc:dd:ee:ff"},
+		BlockedForwardCount1h: 42,
+		Chains: []model.FirewallChain{{
+			Family: "inet", Table: "filter", Name: "input", Hook: "input", Policy: "drop",
+			Counters: []model.RuleCounter{{Handle: 16, Packets: 51139, Bytes: 19119175}},
+		}},
+		UPnPLeases: []model.UPnPLease{{Protocol: "tcp", ExternalPort: 35978, InternalAddr: "192.168.20.6", InternalPort: 32400, Description: "plex/0"}},
+	}
+	s.SetFirewall(in)
+	out, ts := s.SnapshotFirewall()
+	if ts.IsZero() {
+		t.Error("SnapshotFirewall ts should be non-zero")
+	}
+	if len(out.PortForwards) != 1 || out.PortForwards[0].ExternalPort != 35978 {
+		t.Errorf("PortForwards = %+v", out.PortForwards)
+	}
+	if len(out.PBR.SourceRules) != 1 || out.PBR.SourceRules[0].Tunnel != "wg_sw" {
+		t.Errorf("PBR.SourceRules = %+v", out.PBR.SourceRules)
+	}
+	if out.BlockedForwardCount1h != 42 {
+		t.Errorf("BlockedForwardCount1h = %d, want 42", out.BlockedForwardCount1h)
+	}
+	if len(out.Chains) != 1 || len(out.Chains[0].Counters) != 1 || out.Chains[0].Counters[0].Bytes != 19119175 {
+		t.Errorf("Chains = %+v", out.Chains)
+	}
+	if len(out.UPnPLeases) != 1 || out.UPnPLeases[0].InternalAddr != "192.168.20.6" {
+		t.Errorf("UPnPLeases = %+v", out.UPnPLeases)
+	}
+	// Mutate output → original cache should be untouched.
+	out.Chains[0].Counters[0].Bytes = 999
+	out.PBR.SourceRules[0].Sources[0] = "9.9.9.9"
+	out2, _ := s.SnapshotFirewall()
+	if out2.Chains[0].Counters[0].Bytes != 19119175 {
+		t.Errorf("chain counter mutation leaked: %d", out2.Chains[0].Counters[0].Bytes)
+	}
+	if out2.PBR.SourceRules[0].Sources[0] != "192.168.1.225" {
+		t.Errorf("pbr source mutation leaked: %q", out2.PBR.SourceRules[0].Sources[0])
+	}
+}
+
+func TestQoSRoundTrip(t *testing.T) {
+	s := New()
+	eg := model.QdiscStats{Kind: "cake", BandwidthBps: 100_000_000, SentBytes: 100, Tins: []model.CAKETin{{Name: "Bulk"}}}
+	in := model.QdiscStats{Kind: "htb+fq_codel", SentBytes: 200, ECNMark: 5}
+	s.SetQoS(model.QoS{Egress: &eg, Ingress: &in})
+	out, ts := s.SnapshotQoS()
+	if ts.IsZero() {
+		t.Error("SnapshotQoS ts should be non-zero")
+	}
+	if out.Egress == nil || out.Egress.Kind != "cake" || len(out.Egress.Tins) != 1 {
+		t.Errorf("Egress = %+v", out.Egress)
+	}
+	if out.Ingress == nil || out.Ingress.Kind != "htb+fq_codel" || out.Ingress.ECNMark != 5 {
+		t.Errorf("Ingress = %+v", out.Ingress)
+	}
+	// Mutate output → original cache should be untouched.
+	out.Egress.Tins[0].Name = "X"
+	out2, _ := s.SnapshotQoS()
+	if out2.Egress.Tins[0].Name != "Bulk" {
+		t.Error("egress tin mutation leaked")
+	}
+}
+
 func TestConcurrentReadersAndWriter(t *testing.T) {
 	s := New()
 	const goroutines = 10

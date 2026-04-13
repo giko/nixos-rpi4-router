@@ -43,6 +43,12 @@ type State struct {
 
 	clientConns        map[string]conntrack.ClientConnInfo
 	clientConnsUpdated time.Time
+
+	firewall        model.Firewall
+	firewallUpdated time.Time
+
+	qos        model.QoS
+	qosUpdated time.Time
 }
 
 // New returns an initialized State with zero values.
@@ -440,6 +446,125 @@ func copyAdguard(src model.AdguardStats) model.AdguardStats {
 	if src.QueryDensity24h != nil {
 		dst.QueryDensity24h = make([]model.DensityBin, len(src.QueryDensity24h))
 		copy(dst.QueryDensity24h, src.QueryDensity24h)
+	}
+	return dst
+}
+
+// --- Firewall ---
+
+// SetFirewall replaces the cached firewall snapshot with a defensive copy.
+func (s *State) SetFirewall(v model.Firewall) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.firewall = copyFirewall(v)
+	s.firewallUpdated = time.Now()
+}
+
+// SnapshotFirewall returns a defensive copy of the firewall snapshot
+// and the section's update time.
+func (s *State) SnapshotFirewall() (model.Firewall, time.Time) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return copyFirewall(s.firewall), s.firewallUpdated
+}
+
+// --- QoS ---
+
+// SetQoS replaces the cached QoS snapshot with a defensive copy.
+func (s *State) SetQoS(v model.QoS) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.qos = copyQoS(v)
+	s.qosUpdated = time.Now()
+}
+
+// SnapshotQoS returns a defensive copy of the QoS snapshot and the
+// section's update time.
+func (s *State) SnapshotQoS() (model.QoS, time.Time) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return copyQoS(s.qos), s.qosUpdated
+}
+
+func copyFirewall(src model.Firewall) model.Firewall {
+	dst := model.Firewall{
+		BlockedForwardCount1h: src.BlockedForwardCount1h,
+	}
+	if src.PortForwards != nil {
+		dst.PortForwards = make([]model.PortForward, len(src.PortForwards))
+		copy(dst.PortForwards, src.PortForwards)
+	}
+	dst.PBR = copyPBR(src.PBR)
+	if src.AllowedMACs != nil {
+		dst.AllowedMACs = make([]string, len(src.AllowedMACs))
+		copy(dst.AllowedMACs, src.AllowedMACs)
+	}
+	if src.Chains != nil {
+		dst.Chains = make([]model.FirewallChain, len(src.Chains))
+		for i, c := range src.Chains {
+			dst.Chains[i] = c
+			if c.Counters != nil {
+				dst.Chains[i].Counters = make([]model.RuleCounter, len(c.Counters))
+				copy(dst.Chains[i].Counters, c.Counters)
+			}
+		}
+	}
+	if src.UPnPLeases != nil {
+		dst.UPnPLeases = make([]model.UPnPLease, len(src.UPnPLeases))
+		copy(dst.UPnPLeases, src.UPnPLeases)
+	}
+	return dst
+}
+
+func copyPBR(src model.PBR) model.PBR {
+	dst := model.PBR{}
+	if src.SourceRules != nil {
+		dst.SourceRules = make([]model.PBRSourceRule, len(src.SourceRules))
+		for i, r := range src.SourceRules {
+			dst.SourceRules[i] = r
+			if r.Sources != nil {
+				dst.SourceRules[i].Sources = append([]string(nil), r.Sources...)
+			}
+		}
+	}
+	if src.DomainRules != nil {
+		dst.DomainRules = make([]model.PBRDomainRule, len(src.DomainRules))
+		for i, r := range src.DomainRules {
+			dst.DomainRules[i] = r
+			if r.Domains != nil {
+				dst.DomainRules[i].Domains = append([]string(nil), r.Domains...)
+			}
+		}
+	}
+	if src.PooledRules != nil {
+		dst.PooledRules = make([]model.PBRPooledRule, len(src.PooledRules))
+		for i, r := range src.PooledRules {
+			dst.PooledRules[i] = r
+			if r.Sources != nil {
+				dst.PooledRules[i].Sources = append([]string(nil), r.Sources...)
+			}
+		}
+	}
+	return dst
+}
+
+func copyQoS(src model.QoS) model.QoS {
+	dst := model.QoS{}
+	if src.Egress != nil {
+		eg := *src.Egress
+		if src.Egress.Tins != nil {
+			eg.Tins = make([]model.CAKETin, len(src.Egress.Tins))
+			copy(eg.Tins, src.Egress.Tins)
+		}
+		dst.Egress = &eg
+	}
+	if src.Ingress != nil {
+		in := *src.Ingress
+		if src.Ingress.Tins != nil {
+			in.Tins = make([]model.CAKETin, len(src.Ingress.Tins))
+			copy(in.Tins, src.Ingress.Tins)
+		}
+		dst.Ingress = &in
 	}
 	return dst
 }
