@@ -1,0 +1,2405 @@
+{
+  "oldest": "2026-04-13T14:13:21Z",
+  "data": [
+    {
+      "time": "2026-04-13T14:16:40Z",
+      "question": {
+        "name": "host-1000.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:39Z",
+      "question": {
+        "name": "host-999.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:38Z",
+      "question": {
+        "name": "host-998.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:37Z",
+      "question": {
+        "name": "host-997.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:36Z",
+      "question": {
+        "name": "host-996.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:35Z",
+      "question": {
+        "name": "host-995.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:34Z",
+      "question": {
+        "name": "host-994.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:33Z",
+      "question": {
+        "name": "host-993.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:32Z",
+      "question": {
+        "name": "host-992.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:31Z",
+      "question": {
+        "name": "host-991.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:30Z",
+      "question": {
+        "name": "host-990.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:29Z",
+      "question": {
+        "name": "host-989.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:28Z",
+      "question": {
+        "name": "host-988.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:27Z",
+      "question": {
+        "name": "host-987.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:26Z",
+      "question": {
+        "name": "host-986.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:25Z",
+      "question": {
+        "name": "host-985.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:24Z",
+      "question": {
+        "name": "host-984.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:23Z",
+      "question": {
+        "name": "host-983.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:22Z",
+      "question": {
+        "name": "host-982.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:21Z",
+      "question": {
+        "name": "host-981.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:20Z",
+      "question": {
+        "name": "host-980.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:19Z",
+      "question": {
+        "name": "host-979.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:18Z",
+      "question": {
+        "name": "host-978.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:17Z",
+      "question": {
+        "name": "host-977.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:16Z",
+      "question": {
+        "name": "host-976.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:15Z",
+      "question": {
+        "name": "host-975.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:14Z",
+      "question": {
+        "name": "host-974.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:13Z",
+      "question": {
+        "name": "host-973.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:12Z",
+      "question": {
+        "name": "host-972.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:11Z",
+      "question": {
+        "name": "host-971.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:10Z",
+      "question": {
+        "name": "host-970.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:09Z",
+      "question": {
+        "name": "host-969.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:08Z",
+      "question": {
+        "name": "host-968.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:07Z",
+      "question": {
+        "name": "host-967.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:06Z",
+      "question": {
+        "name": "host-966.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:05Z",
+      "question": {
+        "name": "host-965.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:04Z",
+      "question": {
+        "name": "host-964.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:03Z",
+      "question": {
+        "name": "host-963.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:02Z",
+      "question": {
+        "name": "host-962.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:01Z",
+      "question": {
+        "name": "host-961.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:16:00Z",
+      "question": {
+        "name": "host-960.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:59Z",
+      "question": {
+        "name": "host-959.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:58Z",
+      "question": {
+        "name": "host-958.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:57Z",
+      "question": {
+        "name": "host-957.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:56Z",
+      "question": {
+        "name": "host-956.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:55Z",
+      "question": {
+        "name": "host-955.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:54Z",
+      "question": {
+        "name": "host-954.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:53Z",
+      "question": {
+        "name": "host-953.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:52Z",
+      "question": {
+        "name": "host-952.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:51Z",
+      "question": {
+        "name": "host-951.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:50Z",
+      "question": {
+        "name": "host-950.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:49Z",
+      "question": {
+        "name": "host-949.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:48Z",
+      "question": {
+        "name": "host-948.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:47Z",
+      "question": {
+        "name": "host-947.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:46Z",
+      "question": {
+        "name": "host-946.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:45Z",
+      "question": {
+        "name": "host-945.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:44Z",
+      "question": {
+        "name": "host-944.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:43Z",
+      "question": {
+        "name": "host-943.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:42Z",
+      "question": {
+        "name": "host-942.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:41Z",
+      "question": {
+        "name": "host-941.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:40Z",
+      "question": {
+        "name": "host-940.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:39Z",
+      "question": {
+        "name": "host-939.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:38Z",
+      "question": {
+        "name": "host-938.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:37Z",
+      "question": {
+        "name": "host-937.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:36Z",
+      "question": {
+        "name": "host-936.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:35Z",
+      "question": {
+        "name": "host-935.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:34Z",
+      "question": {
+        "name": "host-934.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:33Z",
+      "question": {
+        "name": "host-933.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:32Z",
+      "question": {
+        "name": "host-932.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:31Z",
+      "question": {
+        "name": "host-931.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:30Z",
+      "question": {
+        "name": "host-930.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:29Z",
+      "question": {
+        "name": "host-929.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:28Z",
+      "question": {
+        "name": "host-928.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:27Z",
+      "question": {
+        "name": "host-927.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:26Z",
+      "question": {
+        "name": "host-926.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:25Z",
+      "question": {
+        "name": "host-925.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:24Z",
+      "question": {
+        "name": "host-924.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:23Z",
+      "question": {
+        "name": "host-923.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:22Z",
+      "question": {
+        "name": "host-922.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:21Z",
+      "question": {
+        "name": "host-921.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:20Z",
+      "question": {
+        "name": "host-920.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:19Z",
+      "question": {
+        "name": "host-919.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:18Z",
+      "question": {
+        "name": "host-918.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:17Z",
+      "question": {
+        "name": "host-917.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:16Z",
+      "question": {
+        "name": "host-916.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:15Z",
+      "question": {
+        "name": "host-915.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:14Z",
+      "question": {
+        "name": "host-914.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:13Z",
+      "question": {
+        "name": "host-913.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:12Z",
+      "question": {
+        "name": "host-912.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:11Z",
+      "question": {
+        "name": "host-911.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:10Z",
+      "question": {
+        "name": "host-910.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:09Z",
+      "question": {
+        "name": "host-909.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:08Z",
+      "question": {
+        "name": "host-908.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:07Z",
+      "question": {
+        "name": "host-907.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:06Z",
+      "question": {
+        "name": "host-906.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:05Z",
+      "question": {
+        "name": "host-905.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:04Z",
+      "question": {
+        "name": "host-904.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:03Z",
+      "question": {
+        "name": "host-903.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:02Z",
+      "question": {
+        "name": "host-902.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:01Z",
+      "question": {
+        "name": "host-901.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:15:00Z",
+      "question": {
+        "name": "host-900.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:59Z",
+      "question": {
+        "name": "host-899.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:58Z",
+      "question": {
+        "name": "host-898.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:57Z",
+      "question": {
+        "name": "host-897.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:56Z",
+      "question": {
+        "name": "host-896.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:55Z",
+      "question": {
+        "name": "host-895.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:54Z",
+      "question": {
+        "name": "host-894.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:53Z",
+      "question": {
+        "name": "host-893.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:52Z",
+      "question": {
+        "name": "host-892.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:51Z",
+      "question": {
+        "name": "host-891.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:50Z",
+      "question": {
+        "name": "host-890.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:49Z",
+      "question": {
+        "name": "host-889.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:48Z",
+      "question": {
+        "name": "host-888.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:47Z",
+      "question": {
+        "name": "host-887.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:46Z",
+      "question": {
+        "name": "host-886.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:45Z",
+      "question": {
+        "name": "host-885.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:44Z",
+      "question": {
+        "name": "host-884.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:43Z",
+      "question": {
+        "name": "host-883.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:42Z",
+      "question": {
+        "name": "host-882.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:41Z",
+      "question": {
+        "name": "host-881.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:40Z",
+      "question": {
+        "name": "host-880.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:39Z",
+      "question": {
+        "name": "host-879.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:38Z",
+      "question": {
+        "name": "host-878.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:37Z",
+      "question": {
+        "name": "host-877.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:36Z",
+      "question": {
+        "name": "host-876.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:35Z",
+      "question": {
+        "name": "host-875.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:34Z",
+      "question": {
+        "name": "host-874.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:33Z",
+      "question": {
+        "name": "host-873.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:32Z",
+      "question": {
+        "name": "host-872.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:31Z",
+      "question": {
+        "name": "host-871.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:30Z",
+      "question": {
+        "name": "host-870.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:29Z",
+      "question": {
+        "name": "host-869.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:28Z",
+      "question": {
+        "name": "host-868.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:27Z",
+      "question": {
+        "name": "host-867.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:26Z",
+      "question": {
+        "name": "host-866.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:25Z",
+      "question": {
+        "name": "host-865.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:24Z",
+      "question": {
+        "name": "host-864.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:23Z",
+      "question": {
+        "name": "host-863.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:22Z",
+      "question": {
+        "name": "host-862.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:21Z",
+      "question": {
+        "name": "host-861.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:20Z",
+      "question": {
+        "name": "host-860.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:19Z",
+      "question": {
+        "name": "host-859.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:18Z",
+      "question": {
+        "name": "host-858.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:17Z",
+      "question": {
+        "name": "host-857.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:16Z",
+      "question": {
+        "name": "host-856.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:15Z",
+      "question": {
+        "name": "host-855.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:14Z",
+      "question": {
+        "name": "host-854.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:13Z",
+      "question": {
+        "name": "host-853.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:12Z",
+      "question": {
+        "name": "host-852.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:11Z",
+      "question": {
+        "name": "host-851.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:10Z",
+      "question": {
+        "name": "host-850.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:09Z",
+      "question": {
+        "name": "host-849.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:08Z",
+      "question": {
+        "name": "host-848.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:07Z",
+      "question": {
+        "name": "host-847.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:06Z",
+      "question": {
+        "name": "host-846.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:05Z",
+      "question": {
+        "name": "host-845.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:04Z",
+      "question": {
+        "name": "host-844.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:03Z",
+      "question": {
+        "name": "host-843.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:02Z",
+      "question": {
+        "name": "host-842.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:01Z",
+      "question": {
+        "name": "host-841.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:14:00Z",
+      "question": {
+        "name": "host-840.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:59Z",
+      "question": {
+        "name": "host-839.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:58Z",
+      "question": {
+        "name": "host-838.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:57Z",
+      "question": {
+        "name": "host-837.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:56Z",
+      "question": {
+        "name": "host-836.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:55Z",
+      "question": {
+        "name": "host-835.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:54Z",
+      "question": {
+        "name": "host-834.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:53Z",
+      "question": {
+        "name": "host-833.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:52Z",
+      "question": {
+        "name": "host-832.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:51Z",
+      "question": {
+        "name": "host-831.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:50Z",
+      "question": {
+        "name": "host-830.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:49Z",
+      "question": {
+        "name": "host-829.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:48Z",
+      "question": {
+        "name": "host-828.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:47Z",
+      "question": {
+        "name": "host-827.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:46Z",
+      "question": {
+        "name": "host-826.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:45Z",
+      "question": {
+        "name": "host-825.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:44Z",
+      "question": {
+        "name": "host-824.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:43Z",
+      "question": {
+        "name": "host-823.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:42Z",
+      "question": {
+        "name": "host-822.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:41Z",
+      "question": {
+        "name": "host-821.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:40Z",
+      "question": {
+        "name": "host-820.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:39Z",
+      "question": {
+        "name": "host-819.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:38Z",
+      "question": {
+        "name": "host-818.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:37Z",
+      "question": {
+        "name": "host-817.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:36Z",
+      "question": {
+        "name": "host-816.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:35Z",
+      "question": {
+        "name": "host-815.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:34Z",
+      "question": {
+        "name": "host-814.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:33Z",
+      "question": {
+        "name": "host-813.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:32Z",
+      "question": {
+        "name": "host-812.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:31Z",
+      "question": {
+        "name": "host-811.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:30Z",
+      "question": {
+        "name": "host-810.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:29Z",
+      "question": {
+        "name": "host-809.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:28Z",
+      "question": {
+        "name": "host-808.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:27Z",
+      "question": {
+        "name": "host-807.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:26Z",
+      "question": {
+        "name": "host-806.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:25Z",
+      "question": {
+        "name": "host-805.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:24Z",
+      "question": {
+        "name": "host-804.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:23Z",
+      "question": {
+        "name": "host-803.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:22Z",
+      "question": {
+        "name": "host-802.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    },
+    {
+      "time": "2026-04-13T14:13:21Z",
+      "question": {
+        "name": "host-801.example",
+        "type": "A"
+      },
+      "answer": [],
+      "client": "192.168.1.42",
+      "upstream": "tls://dns.quad9.net:853",
+      "elapsedMs": 1.23,
+      "reason": "NotFiltered"
+    }
+  ]
+}
