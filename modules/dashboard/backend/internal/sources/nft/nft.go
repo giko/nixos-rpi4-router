@@ -26,8 +26,8 @@ type Chain struct {
 	Family    string `json:"family"` // "ip" | "ip6" | "inet" | ...
 	Table     string `json:"table"`
 	Name      string `json:"name"`
-	Type      string `json:"type,omitempty"`     // "filter" | "nat" | ""
-	Hook      string `json:"hook,omitempty"`     // "input" | "forward" | "prerouting" | ...
+	Type      string `json:"type,omitempty"` // "filter" | "nat" | ""
+	Hook      string `json:"hook,omitempty"` // "input" | "forward" | "prerouting" | ...
 	Priority  int    `json:"priority,omitempty"`
 	Policy    string `json:"policy,omitempty"` // "accept" | "drop" | ""
 	Handle    int    `json:"handle"`
