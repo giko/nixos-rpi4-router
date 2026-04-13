@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 const statsFixture = `{
@@ -141,6 +143,28 @@ func TestFetchQueryLog(t *testing.T) {
 	}
 	if entries[0]["question"] != "example.com" {
 		t.Errorf("question = %q, want example.com", entries[0]["question"])
+	}
+}
+
+func TestFetchQueryLogPagePassesOlderThan(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		_, _ = w.Write([]byte(`{"oldest":"","data":[]}`))
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL, srv.Client())
+	older := time.Date(2026, 4, 13, 14, 0, 0, 0, time.UTC)
+	if _, err := c.FetchQueryLogPage(context.Background(), older, 500); err != nil {
+		t.Fatalf("FetchQueryLogPage: %v", err)
+	}
+
+	if !strings.Contains(gotQuery, "older_than=2026-04-13T14%3A00%3A00Z") {
+		t.Errorf("query = %q, want older_than param", gotQuery)
+	}
+	if !strings.Contains(gotQuery, "limit=500") {
+		t.Errorf("query = %q, want limit=500", gotQuery)
 	}
 }
 
