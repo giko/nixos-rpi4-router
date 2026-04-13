@@ -36,11 +36,17 @@ func (*Pools) Tier() Tier   { return Hot }
 
 // Run performs a single collection pass.
 func (c *Pools) Run(_ context.Context) error {
-	// Read pool-health; tolerate missing/unreadable file.
+	// Read pool-health. On failure preserve the previous snapshot —
+	// substituting an empty map would default every member to
+	// healthy=true and clear FailsafeDropActive, flipping the report to
+	// "healthy" precisely when the health source is broken. Skipping the
+	// write leaves the old values (and their updated_at) in place so the
+	// handler's staleness check surfaces the error instead of reporting
+	// fresh-but-wrong data.
 	ph, err := poolhealth.ReadState(c.opts.PoolHealthPath)
 	if err != nil {
-		slog.Warn("pools: pool-health read failed, assuming all healthy", "err", err)
-		ph = poolhealth.State{Tunnels: make(map[string]poolhealth.TunnelInfo)}
+		slog.Warn("pools: pool-health read failed, keeping previous pool state (will go stale)", "err", err)
+		return nil
 	}
 
 	// Index tunnel fwmarks from topology for quick lookup.

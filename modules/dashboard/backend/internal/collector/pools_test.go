@@ -182,6 +182,64 @@ func TestPoolsCollectorFailsafeDrop(t *testing.T) {
 	}
 }
 
+func TestPoolsCollectorKeepsPreviousStateWhenHealthUnreadable(t *testing.T) {
+	topo := &topology.Topology{
+		Tunnels: []topology.Tunnel{
+			{Name: "wg_sw", Interface: "wg_sw", Fwmark: "0x20000", RoutingTable: 200},
+		},
+		Pools: []topology.Pool{
+			{Name: "vpn_pool", Members: []string{"wg_sw"}},
+		},
+	}
+
+	st := state.New()
+
+	// Seed a known-bad-health pool state from a previous successful run.
+	st.SetPools([]model.Pool{
+		{
+			Name: "vpn_pool",
+			Members: []model.PoolMember{
+				{Tunnel: "wg_sw", Fwmark: "0x20000", Healthy: false, FlowCount: 3},
+			},
+			FailsafeDropActive: true,
+		},
+	})
+
+	// Write a malformed JSON file so poolhealth.ReadState returns an
+	// error (missing-file is silently treated as empty state).
+	phDir := t.TempDir()
+	phPath := filepath.Join(phDir, "state.json")
+	if err := os.WriteFile(phPath, []byte("{not json"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := NewPools(PoolsOpts{
+		Topology:       topo,
+		PoolHealthPath: phPath,
+		State:          st,
+	})
+
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	pools, _ := st.SnapshotPools()
+	if len(pools) != 1 {
+		t.Fatalf("expected 1 pool, got %d", len(pools))
+	}
+	// Previous unhealthy state must be preserved — a malformed or
+	// unreadable health file must not flip the report to "healthy".
+	if pools[0].Members[0].Healthy {
+		t.Error("Healthy should remain false when health file unreadable")
+	}
+	if !pools[0].FailsafeDropActive {
+		t.Error("FailsafeDropActive should remain true when health file unreadable")
+	}
+	if pools[0].Members[0].FlowCount != 3 {
+		t.Errorf("FlowCount lost: %d, want 3", pools[0].Members[0].FlowCount)
+	}
+}
+
 func TestPoolsCollectorPreservesFlowCount(t *testing.T) {
 	phDir := t.TempDir()
 	phPath := filepath.Join(phDir, "state.json")
