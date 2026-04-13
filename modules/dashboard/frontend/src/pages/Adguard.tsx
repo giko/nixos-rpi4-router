@@ -63,13 +63,22 @@ function DensityChart({
 }: {
   data: { start_hour: number; queries: number; blocked: number }[];
 }) {
+  // AdGuard's `blocked` count is already included in `queries`. Stacking
+  // them as-is produces a total bar that is inflated by `blocked` — so
+  // derive `allowed = queries - blocked` and stack allowed + blocked,
+  // which sums back to the true query total.
+  const chartData = data.map((bin) => ({
+    start_hour: bin.start_hour,
+    allowed: Math.max(0, bin.queries - bin.blocked),
+    blocked: bin.blocked,
+  }));
   return (
     <div className="bg-surface-container rounded-sm p-4">
       <p className="label-xs mb-3">Query Density (24h)</p>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={data}
+            data={chartData}
             margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
           >
             <XAxis
@@ -90,7 +99,7 @@ function DensityChart({
               cursor={{ fill: "hsl(var(--surface-container-high) / 0.5)" }}
             />
             <Bar
-              dataKey="queries"
+              dataKey="allowed"
               stackId="a"
               fill="hsl(var(--primary))"
               isAnimationActive={false}
