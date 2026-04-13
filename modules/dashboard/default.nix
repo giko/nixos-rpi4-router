@@ -35,6 +35,17 @@ let
     }) config.router.dhcp.staticLeases;
     allowlist_enabled = allowlistEnabled;
     allowed_macs = allowlistMacs;
+    port_forwards = map (pf: {
+      protocol = pf.proto;
+      external_port = pf.externalPort;
+      destination = pf.destination;
+    }) config.router.portForwards;
+    pbr_source_rules = map (r: {
+      inherit (r) sources tunnel;
+    }) config.router.pbr.sourceRules;
+    pbr_domain_rules = lib.mapAttrsToList (tunnel: domains: {
+      inherit tunnel domains;
+    }) config.router.pbr.domainSets;
     lan_interface = config.router.lan.interface;
     wan_interface = config.router.wan.interface;
   };

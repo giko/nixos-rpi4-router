@@ -12,14 +12,17 @@ import (
 
 // Topology holds the router topology exported by the NixOS module.
 type Topology struct {
-	Tunnels          []Tunnel      `json:"tunnels"`
-	Pools            []Pool        `json:"pools"`
-	PooledRules      []PooledRule  `json:"pooled_rules"`
-	StaticLeases     []StaticLease `json:"static_leases"`
-	AllowlistEnabled bool          `json:"allowlist_enabled"`
-	AllowedMACs      []string      `json:"allowed_macs"`
-	LANInterface     string        `json:"lan_interface"`
-	WANInterface     string        `json:"wan_interface"`
+	Tunnels          []Tunnel        `json:"tunnels"`
+	Pools            []Pool          `json:"pools"`
+	PooledRules      []PooledRule    `json:"pooled_rules"`
+	StaticLeases     []StaticLease   `json:"static_leases"`
+	AllowlistEnabled bool            `json:"allowlist_enabled"`
+	AllowedMACs      []string        `json:"allowed_macs"`
+	PortForwards     []PortForward   `json:"port_forwards"`
+	PBRSourceRules   []PBRSourceRule `json:"pbr_source_rules"`
+	PBRDomainRules   []PBRDomainRule `json:"pbr_domain_rules"`
+	LANInterface     string          `json:"lan_interface"`
+	WANInterface     string          `json:"wan_interface"`
 }
 
 // Tunnel describes a WireGuard tunnel with its fwmark and routing table.
@@ -110,4 +113,23 @@ func (t *Topology) ClientIPsForPool(name string) []string {
 		}
 	}
 	return out
+}
+
+// PortForward is a static DNAT rule defined in nix module config.
+type PortForward struct {
+	Protocol     string `json:"protocol"`
+	ExternalPort int    `json:"external_port"`
+	Destination  string `json:"destination"` // "ip:port"
+}
+
+// PBRSourceRule routes every new connection from `Sources` through `Tunnel`.
+type PBRSourceRule struct {
+	Sources []string `json:"sources"`
+	Tunnel  string   `json:"tunnel"` // tunnel name or "wan"
+}
+
+// PBRDomainRule routes traffic to `Domains` through `Tunnel`.
+type PBRDomainRule struct {
+	Tunnel  string   `json:"tunnel"`
+	Domains []string `json:"domains"`
 }

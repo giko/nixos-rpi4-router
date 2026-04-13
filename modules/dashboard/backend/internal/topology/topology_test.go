@@ -23,7 +23,10 @@ const fixture = `{
   "allowlist_enabled": true,
   "allowed_macs": ["aa:bb:cc:dd:ee:ff"],
   "lan_interface": "eth0",
-  "wan_interface": "eth1"
+  "wan_interface": "eth1",
+  "port_forwards": [{"protocol":"tcp","external_port":35978,"destination":"192.168.20.6:32400"}],
+  "pbr_source_rules": [{"sources":["192.168.1.225"],"tunnel":"wg_sw"}],
+  "pbr_domain_rules": [{"tunnel":"wg_sw","domains":["example.com"]}]
 }`
 
 func TestLoadValid(t *testing.T) {
@@ -59,6 +62,15 @@ func TestLoadValid(t *testing.T) {
 	}
 	if !topo.AllowlistEnabled {
 		t.Errorf("allowlist_enabled = %v, want true", topo.AllowlistEnabled)
+	}
+	if len(topo.PortForwards) != 1 || topo.PortForwards[0].ExternalPort != 35978 {
+		t.Errorf("PortForwards = %+v", topo.PortForwards)
+	}
+	if len(topo.PBRSourceRules) != 1 || topo.PBRSourceRules[0].Tunnel != "wg_sw" {
+		t.Errorf("PBRSourceRules = %+v", topo.PBRSourceRules)
+	}
+	if len(topo.PBRDomainRules) != 1 || topo.PBRDomainRules[0].Domains[0] != "example.com" {
+		t.Errorf("PBRDomainRules = %+v", topo.PBRDomainRules)
 	}
 }
 
