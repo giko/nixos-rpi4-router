@@ -170,3 +170,47 @@ func TestFirewallCollectorWithholdsBlockedCountUntil1hOfHistory(t *testing.T) {
 		t.Errorf("BlockedForwardCount1h = %d, want 0 (only 30min of history)", got.BlockedForwardCount1h)
 	}
 }
+
+func TestFirewallCollectorEmitsNonNilContainersOnEmptyTopology(t *testing.T) {
+	// Empty topology + nft output containing only chain declarations
+	// (no counter rules, no UPnP). Every container slice in the
+	// emitted snapshot must be non-nil so JSON serializes as `[]`
+	// and the frontend's .length / .map calls don't crash.
+	st := state.New()
+	stub := func(_ context.Context, _ ...string) ([]byte, error) {
+		return []byte(`{"nftables":[
+			{"chain":{"family":"inet","table":"filter","name":"output","handle":1,"type":"filter","hook":"output","prio":0,"policy":"accept"}}
+		]}`), nil
+	}
+	c := NewFirewall(FirewallOpts{State: st, Topology: &topology.Topology{}, Run: stub})
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	got, _ := st.SnapshotFirewall()
+	if got.PortForwards == nil {
+		t.Error("PortForwards is nil; should be non-nil empty slice")
+	}
+	if got.PBR.SourceRules == nil {
+		t.Error("PBR.SourceRules is nil; should be non-nil empty slice")
+	}
+	if got.PBR.DomainRules == nil {
+		t.Error("PBR.DomainRules is nil; should be non-nil empty slice")
+	}
+	if got.PBR.PooledRules == nil {
+		t.Error("PBR.PooledRules is nil; should be non-nil empty slice")
+	}
+	if got.AllowedMACs == nil {
+		t.Error("AllowedMACs is nil; should be non-nil empty slice")
+	}
+	if got.UPnPLeases == nil {
+		t.Error("UPnPLeases is nil; should be non-nil empty slice")
+	}
+	if got.Chains == nil {
+		t.Error("Chains is nil; should be non-nil empty slice")
+	}
+	for _, ch := range got.Chains {
+		if ch.Counters == nil {
+			t.Errorf("Chain %s/%s/%s Counters is nil; should be non-nil empty slice", ch.Family, ch.Table, ch.Name)
+		}
+	}
+}

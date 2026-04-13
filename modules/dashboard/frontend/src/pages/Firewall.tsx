@@ -52,8 +52,8 @@ const sourceRuleColumns: Column<PBRSourceRule>[] = [
   {
     key: "sources",
     label: "Sources",
-    render: (r) => <MonoText className="text-xs">{r.sources.join(", ")}</MonoText>,
-    sortValue: (r) => r.sources.join(","),
+    render: (r) => <MonoText className="text-xs">{(r.sources ?? []).join(", ")}</MonoText>,
+    sortValue: (r) => (r.sources ?? []).join(","),
   },
   {
     key: "tunnel",
@@ -74,9 +74,9 @@ const domainRuleColumns: Column<PBRDomainRule>[] = [
     key: "domains",
     label: "Domains",
     render: (r) => (
-      <MonoText className="text-xs">{r.domains.join(", ")}</MonoText>
+      <MonoText className="text-xs">{(r.domains ?? []).join(", ")}</MonoText>
     ),
-    sortValue: (r) => r.domains.join(","),
+    sortValue: (r) => (r.domains ?? []).join(","),
   },
 ];
 
@@ -90,8 +90,8 @@ const pooledRuleColumns: Column<PBRPooledRule>[] = [
   {
     key: "sources",
     label: "Sources",
-    render: (r) => <MonoText className="text-xs">{r.sources.join(", ")}</MonoText>,
-    sortValue: (r) => r.sources.join(","),
+    render: (r) => <MonoText className="text-xs">{(r.sources ?? []).join(", ")}</MonoText>,
+    sortValue: (r) => (r.sources ?? []).join(","),
   },
 ];
 
@@ -221,9 +221,21 @@ export function Firewall() {
 
   const refetchFailed =
     rulesQ.isError || countersQ.isError || upnpQ.isError;
-  const rules = rulesQ.data.data;
-  const chains = countersQ.data.data.chains;
-  const leases = upnpQ.data.data.leases;
+  // Defensive: an older backend or empty topology may serialize empty
+  // arrays as null; coerce every consumed array to `[]` so .length /
+  // .map calls below don't crash.
+  const rawRules = rulesQ.data.data;
+  const portForwards = rawRules.port_forwards ?? [];
+  const sourceRules = rawRules.pbr?.source_rules ?? [];
+  const domainRules = rawRules.pbr?.domain_rules ?? [];
+  const pooledRules = rawRules.pbr?.pooled_rules ?? [];
+  const allowedMacs = rawRules.allowed_macs ?? [];
+  const blockedForwardCount1h = rawRules.blocked_forward_count_1h ?? 0;
+  const chains = (countersQ.data.data.chains ?? []).map((c) => ({
+    ...c,
+    counters: c.counters ?? [],
+  }));
+  const leases = upnpQ.data.data.leases ?? [];
 
   const combinedStale =
     (rulesQ.data.stale ?? false) ||
@@ -254,26 +266,26 @@ export function Firewall() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatTile label="Port forwards" value={String(rules.port_forwards.length)} />
-        <StatTile label="PBR rules" value={String(rules.pbr.source_rules.length + rules.pbr.domain_rules.length + rules.pbr.pooled_rules.length)} />
-        <StatTile label="Allowed MACs" value={String(rules.allowed_macs.length)} />
+        <StatTile label="Port forwards" value={String(portForwards.length)} />
+        <StatTile label="PBR rules" value={String(sourceRules.length + domainRules.length + pooledRules.length)} />
+        <StatTile label="Allowed MACs" value={String(allowedMacs.length)} />
         <StatTile
           label="Blocked forwards (1h)"
-          value={rules.blocked_forward_count_1h.toLocaleString()}
-          tone={rules.blocked_forward_count_1h > 0 ? "degraded" : undefined}
+          value={blockedForwardCount1h.toLocaleString()}
+          tone={blockedForwardCount1h > 0 ? "degraded" : undefined}
         />
       </div>
 
       <div className="space-y-2">
         <h2 className="label-xs">Port forwards</h2>
-        {rules.port_forwards.length === 0 ? (
+        {portForwards.length === 0 ? (
           <p className="text-sm text-on-surface-variant font-mono">
             No port forwards configured.
           </p>
         ) : (
           <DataTable
             columns={portForwardColumns}
-            rows={rules.port_forwards}
+            rows={portForwards}
             rowKey={(r) => `${r.protocol}/${r.external_port}`}
           />
         )}
@@ -281,58 +293,58 @@ export function Firewall() {
 
       <div className="space-y-2">
         <h2 className="label-xs">PBR — source rules</h2>
-        {rules.pbr.source_rules.length === 0 ? (
+        {sourceRules.length === 0 ? (
           <p className="text-sm text-on-surface-variant font-mono">
             No source-based PBR rules.
           </p>
         ) : (
           <DataTable
             columns={sourceRuleColumns}
-            rows={rules.pbr.source_rules}
-            rowKey={(r) => `${r.tunnel}|${r.sources.join(",")}`}
+            rows={sourceRules}
+            rowKey={(r) => `${r.tunnel}|${(r.sources ?? []).join(",")}`}
           />
         )}
       </div>
 
       <div className="space-y-2">
         <h2 className="label-xs">PBR — domain rules</h2>
-        {rules.pbr.domain_rules.length === 0 ? (
+        {domainRules.length === 0 ? (
           <p className="text-sm text-on-surface-variant font-mono">
             No domain-based PBR rules.
           </p>
         ) : (
           <DataTable
             columns={domainRuleColumns}
-            rows={rules.pbr.domain_rules}
-            rowKey={(r) => `${r.tunnel}|${r.domains.join(",")}`}
+            rows={domainRules}
+            rowKey={(r) => `${r.tunnel}|${(r.domains ?? []).join(",")}`}
           />
         )}
       </div>
 
       <div className="space-y-2">
         <h2 className="label-xs">PBR — pooled rules</h2>
-        {rules.pbr.pooled_rules.length === 0 ? (
+        {pooledRules.length === 0 ? (
           <p className="text-sm text-on-surface-variant font-mono">
             No pooled PBR rules.
           </p>
         ) : (
           <DataTable
             columns={pooledRuleColumns}
-            rows={rules.pbr.pooled_rules}
-            rowKey={(r) => `${r.pool}|${r.sources.join(",")}`}
+            rows={pooledRules}
+            rowKey={(r) => `${r.pool}|${(r.sources ?? []).join(",")}`}
           />
         )}
       </div>
 
       <div className="space-y-2">
-        <h2 className="label-xs">Allowlisted MACs ({rules.allowed_macs.length})</h2>
-        {rules.allowed_macs.length === 0 ? (
+        <h2 className="label-xs">Allowlisted MACs ({allowedMacs.length})</h2>
+        {allowedMacs.length === 0 ? (
           <p className="text-sm text-on-surface-variant font-mono">
             Allowlist is empty or disabled.
           </p>
         ) : (
           <div className="bg-surface-container rounded-sm p-4 flex flex-wrap gap-2">
-            {rules.allowed_macs.map((m) => (
+            {allowedMacs.map((m) => (
               <MonoText key={m} className="text-xs bg-surface-high px-2 py-1 rounded-sm">
                 {m}
               </MonoText>

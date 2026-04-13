@@ -118,15 +118,28 @@ func (c *Firewall) Run(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 
+	// Init every container slice as a non-nil empty slice so JSON
+	// serialization always emits `[]` rather than `null`. The frontend
+	// types declare these as arrays; nulls would crash `.length` /
+	// `.map` calls on the consuming pages.
 	out := model.Firewall{
 		BlockedForwardCount1h: delta,
-		Chains:                make([]model.FirewallChain, 0, len(r.Chains)),
-		UPnPLeases:            make([]model.UPnPLease, 0, len(r.UPnPMappings)),
+		PortForwards:          []model.PortForward{},
+		PBR: model.PBR{
+			SourceRules: []model.PBRSourceRule{},
+			DomainRules: []model.PBRDomainRule{},
+			PooledRules: []model.PBRPooledRule{},
+		},
+		AllowedMACs: []string{},
+		Chains:      make([]model.FirewallChain, 0, len(r.Chains)),
+		UPnPLeases:  make([]model.UPnPLease, 0, len(r.UPnPMappings)),
 	}
 
 	// Merge topology-sourced static fields.
 	if topo := c.opts.Topology; topo != nil {
-		out.AllowedMACs = append([]string(nil), topo.AllowedMACs...)
+		if len(topo.AllowedMACs) > 0 {
+			out.AllowedMACs = append(out.AllowedMACs, topo.AllowedMACs...)
+		}
 		for _, pf := range topo.PortForwards {
 			out.PortForwards = append(out.PortForwards, model.PortForward{
 				Protocol:     pf.Protocol,
@@ -135,31 +148,45 @@ func (c *Firewall) Run(ctx context.Context) error {
 			})
 		}
 		for _, r := range topo.PBRSourceRules {
+			sources := []string{}
+			if len(r.Sources) > 0 {
+				sources = append(sources, r.Sources...)
+			}
 			out.PBR.SourceRules = append(out.PBR.SourceRules, model.PBRSourceRule{
-				Sources: append([]string(nil), r.Sources...),
+				Sources: sources,
 				Tunnel:  r.Tunnel,
 			})
 		}
 		for _, r := range topo.PBRDomainRules {
+			domains := []string{}
+			if len(r.Domains) > 0 {
+				domains = append(domains, r.Domains...)
+			}
 			out.PBR.DomainRules = append(out.PBR.DomainRules, model.PBRDomainRule{
 				Tunnel:  r.Tunnel,
-				Domains: append([]string(nil), r.Domains...),
+				Domains: domains,
 			})
 		}
 		for _, r := range topo.PooledRules {
+			sources := []string{}
+			if len(r.Sources) > 0 {
+				sources = append(sources, r.Sources...)
+			}
 			out.PBR.PooledRules = append(out.PBR.PooledRules, model.PBRPooledRule{
-				Sources: append([]string(nil), r.Sources...),
+				Sources: sources,
 				Pool:    r.Pool,
 			})
 		}
 	}
 
-	// Chains + nested counters.
+	// Chains + nested counters. Each chain's Counters is initialized as
+	// a non-nil empty slice for the same JSON-shape reason.
 	for _, ch := range r.Chains {
 		mc := model.FirewallChain{
 			Family: ch.Family, Table: ch.Table, Name: ch.Name, Type: ch.Type,
 			Hook: ch.Hook, Priority: ch.Priority, Policy: ch.Policy,
-			Handle: ch.Handle,
+			Handle:   ch.Handle,
+			Counters: []model.RuleCounter{},
 		}
 		// Attach every per-rule counter belonging to this chain. We don't
 		// know the chain's rule handles directly, so we filter countersByRule
