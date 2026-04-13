@@ -82,3 +82,40 @@ func TestTopDestSortByBytesThenBlockedThenQueries(t *testing.T) {
 		t.Errorf("second = %s, want spammy.com (blocked desc after bytes tie at 0)", dests[1].Domain)
 	}
 }
+
+func TestTopDestNewestFirstIngestDoesNotHang(t *testing.T) {
+	td := NewTopDestinations(TopDestOpts{})
+	client := netip.MustParseAddr("192.168.1.42")
+	td.Track(client)
+	t0 := time.Date(2026, 4, 13, 14, 5, 0, 0, time.UTC)
+	// Simulate newest-first ingest: record a query for t0, then t0-2min, then t0-5min.
+	td.RecordQuery(client, "netflix.com", false, t0)
+	td.RecordQuery(client, "netflix.com", false, t0.Add(-2*time.Minute))
+	td.RecordQuery(client, "netflix.com", false, t0.Add(-5*time.Minute))
+	dests := td.Snapshot(client)
+	if len(dests) != 1 || dests[0].Queries != 3 {
+		t.Fatalf("want 1 dest with 3 queries, got %+v", dests)
+	}
+}
+
+func TestTopDestEvictionPurgesBuckets(t *testing.T) {
+	td := NewTopDestinations(TopDestOpts{PerClientCap: 2})
+	client := netip.MustParseAddr("192.168.1.42")
+	td.Track(client)
+	t0 := time.Date(2026, 4, 13, 14, 5, 0, 0, time.UTC)
+	td.RecordQuery(client, "a.com", false, t0)
+	td.RecordQuery(client, "b.com", false, t0)
+	td.RecordQuery(client, "c.com", false, t0) // evicts a.com (least-recent tied, implementation-defined; acceptable)
+	// Advance past the window so old buckets would try to subtract.
+	td.Advance(t0.Add(2 * time.Minute))
+	td.Advance(t0.Add(61 * time.Minute))
+	// If the bucket state hadn't been purged, rotate() would try to
+	// decrement a.com which no longer exists in totals — at minimum,
+	// we must not crash, and we must not leave a phantom entry.
+	dests := td.Snapshot(client)
+	for _, d := range dests {
+		if d.Queries > 1 || d.Bytes > 0 {
+			t.Errorf("unexpected totals after eviction+decay: %+v", d)
+		}
+	}
+}

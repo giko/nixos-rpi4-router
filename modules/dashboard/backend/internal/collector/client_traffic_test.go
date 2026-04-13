@@ -81,3 +81,31 @@ func TestTrafficInboundAttributesRxCorrectly(t *testing.T) {
 		t.Errorf("tx = %d, want 160000 (200KB reply is client TX on inbound)", samples[0].TxBps)
 	}
 }
+
+func TestTrafficDropThenReTrackStartsFresh(t *testing.T) {
+	client := netip.MustParseAddr("192.168.1.42")
+	key := conntrack.FlowKey{Proto: 6, OrigSrcIP: client,
+		OrigDstIP: netip.MustParseAddr("1.2.3.4"), OrigSrcPort: 1, OrigDstPort: 443}
+	c := NewClientTraffic(ClientTrafficOpts{TickDur: 10 * time.Second})
+	c.Track(client)
+	c.Apply(time.Unix(0, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirOutbound, OrigBytes: 1_000_000, ReplyBytes: 0}})
+	c.Apply(time.Unix(10, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirOutbound, OrigBytes: 2_000_000, ReplyBytes: 0}})
+	// Drop, same flow persists in conntrack with higher bytes
+	c.Drop(client)
+	c.Track(client)
+	c.Apply(time.Unix(20, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirOutbound, OrigBytes: 5_000_000, ReplyBytes: 0}})
+	c.Apply(time.Unix(30, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirOutbound, OrigBytes: 5_500_000, ReplyBytes: 0}})
+	samples, _, _ := c.Snapshot(client)
+	// The re-tracked client's first-post-drop tick is a seed (no sample).
+	// The next tick shows delta = 500_000 bytes over 10s = 400_000 bps tx.
+	if len(samples) != 1 {
+		t.Fatalf("want 1 sample post-drop, got %d", len(samples))
+	}
+	if samples[0].TxBps != 400_000 {
+		t.Errorf("tx = %d, want 400_000 (fresh start, 500KB delta)", samples[0].TxBps)
+	}
+}
