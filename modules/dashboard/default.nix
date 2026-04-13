@@ -36,6 +36,7 @@ let
     allowlist_enabled = allowlistEnabled;
     allowed_macs = allowlistMacs;
     lan_interface = config.router.lan.interface;
+    wan_interface = config.router.wan.interface;
   };
 
   dashboardConfigFile = pkgs.writeText "dashboard-config.json" dashboardConfigJson;

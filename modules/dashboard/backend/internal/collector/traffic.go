@@ -19,7 +19,13 @@ const ringSize = 60
 type TrafficOpts struct {
 	NetDevPath string
 	Interfaces []string
-	State      *state.State
+	// Roles maps interface name → role ("lan", "wan", "tunnel"). Any
+	// interface whose name is in Interfaces but not in Roles gets role
+	// "" in the emitted model. Keeping role assignment driven by
+	// topology means the frontend can locate the WAN interface without
+	// hardcoding "eth1".
+	Roles map[string]string
+	State *state.State
 }
 
 // Traffic reads /proc/net/dev, computes per-interface bit rates from
@@ -104,6 +110,7 @@ func (t *Traffic) Run(_ context.Context) error {
 
 		ifaces = append(ifaces, model.Interface{
 			Name:         name,
+			Role:         t.opts.Roles[name],
 			Operstate:    readOperstate(name),
 			RXBps:        rxBps,
 			TXBps:        txBps,

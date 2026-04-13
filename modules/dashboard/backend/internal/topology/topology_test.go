@@ -22,7 +22,8 @@ const fixture = `{
   ],
   "allowlist_enabled": true,
   "allowed_macs": ["aa:bb:cc:dd:ee:ff"],
-  "lan_interface": "eth0"
+  "lan_interface": "eth0",
+  "wan_interface": "eth1"
 }`
 
 func TestLoadValid(t *testing.T) {
@@ -52,6 +53,9 @@ func TestLoadValid(t *testing.T) {
 	}
 	if topo.LANInterface != "eth0" {
 		t.Errorf("lan = %q", topo.LANInterface)
+	}
+	if topo.WANInterface != "eth1" {
+		t.Errorf("wan = %q, want eth1", topo.WANInterface)
 	}
 	if !topo.AllowlistEnabled {
 		t.Errorf("allowlist_enabled = %v, want true", topo.AllowlistEnabled)

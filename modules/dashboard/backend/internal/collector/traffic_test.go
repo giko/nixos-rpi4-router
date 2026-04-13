@@ -114,6 +114,60 @@ func TestTrafficCollector(t *testing.T) {
 	}
 }
 
+func TestTrafficCollectorSetsRoleFromMap(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "net_dev")
+	if err := os.WriteFile(path, []byte(netdevFixture1), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := state.New()
+	tc := NewTraffic(TrafficOpts{
+		NetDevPath: path,
+		Interfaces: []string{"eth0", "eth1"},
+		Roles:      map[string]string{"eth0": "lan", "eth1": "wan"},
+		State:      st,
+	})
+
+	if err := tc.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	snap, _ := st.SnapshotTraffic()
+	want := map[string]string{"eth0": "lan", "eth1": "wan"}
+	for _, iface := range snap.Interfaces {
+		if iface.Role != want[iface.Name] {
+			t.Errorf("%s role = %q, want %q", iface.Name, iface.Role, want[iface.Name])
+		}
+	}
+}
+
+func TestTrafficCollectorRoleMissingYieldsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "net_dev")
+	if err := os.WriteFile(path, []byte(netdevFixture1), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := state.New()
+	// Roles not provided — Role must be "" (the zero value) for every iface.
+	tc := NewTraffic(TrafficOpts{
+		NetDevPath: path,
+		Interfaces: []string{"eth0"},
+		State:      st,
+	})
+	if err := tc.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	snap, _ := st.SnapshotTraffic()
+	if len(snap.Interfaces) != 1 {
+		t.Fatalf("len = %d, want 1", len(snap.Interfaces))
+	}
+	if snap.Interfaces[0].Role != "" {
+		t.Errorf("Role = %q, want empty", snap.Interfaces[0].Role)
+	}
+}
+
 func TestTrafficRingBufferFull(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "net_dev")
