@@ -101,7 +101,7 @@ func main() {
 			Topology:   topo,
 			LeasesPath: "/var/lib/dnsmasq/dnsmasq.leases",
 			State:      st,
-			Neigh: func(ctx context.Context) (map[string]string, error) {
+			Neigh: func(ctx context.Context) (map[string]ipneigh.Entry, error) {
 				return ipneigh.Collect(ctx, ipneigh.DefaultRunner)
 			},
 		}),

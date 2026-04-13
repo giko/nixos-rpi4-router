@@ -17,19 +17,19 @@ func TestParseNeigh(t *testing.T) {
 		t.Fatalf("got %d entries, want 3", len(m))
 	}
 
-	want := map[string]string{
-		"192.168.1.10": "aa:bb:cc:dd:ee:ff",
-		"192.168.1.20": "11:22:33:44:55:66",
-		"169.254.0.1":  "de:ad:be:ef:00:00",
+	want := []Entry{
+		{IP: "192.168.1.10", MAC: "aa:bb:cc:dd:ee:ff", Dev: "eth0"},
+		{IP: "192.168.1.20", MAC: "11:22:33:44:55:66", Dev: "eth0"},
+		{IP: "169.254.0.1", MAC: "de:ad:be:ef:00:00", Dev: "eth1"},
 	}
-	for ip, mac := range want {
-		got, ok := m[ip]
+	for _, w := range want {
+		got, ok := m[w.IP]
 		if !ok {
-			t.Errorf("missing entry for %s", ip)
+			t.Errorf("missing entry for %s", w.IP)
 			continue
 		}
-		if got != mac {
-			t.Errorf("m[%q] = %q, want %q", ip, got, mac)
+		if got != w {
+			t.Errorf("m[%q] = %+v, want %+v", w.IP, got, w)
 		}
 	}
 
@@ -55,8 +55,27 @@ func TestParseNeighIncomplete(t *testing.T) {
 
 func TestParseNeighMACLowercase(t *testing.T) {
 	m := parseNeigh("192.168.1.10 dev eth0 lladdr AA:BB:CC:DD:EE:FF REACHABLE\n")
-	if m["192.168.1.10"] != "aa:bb:cc:dd:ee:ff" {
-		t.Errorf("MAC not lowercased: got %q", m["192.168.1.10"])
+	if m["192.168.1.10"].MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("MAC not lowercased: got %q", m["192.168.1.10"].MAC)
+	}
+	if m["192.168.1.10"].Dev != "eth0" {
+		t.Errorf("Dev = %q, want eth0", m["192.168.1.10"].Dev)
+	}
+}
+
+func TestParseNeighCapturesDev(t *testing.T) {
+	fixture := `192.168.1.10 dev eth0 lladdr aa:bb:cc:dd:ee:ff REACHABLE
+8.8.8.8 dev eth1 lladdr 00:11:22:33:44:55 STALE
+192.168.20.5 dev eth0.20 lladdr 66:77:88:99:aa:bb REACHABLE`
+	m := parseNeigh(fixture)
+	if m["192.168.1.10"].Dev != "eth0" {
+		t.Errorf("dev eth0 not captured: %+v", m["192.168.1.10"])
+	}
+	if m["8.8.8.8"].Dev != "eth1" {
+		t.Errorf("dev eth1 not captured: %+v", m["8.8.8.8"])
+	}
+	if m["192.168.20.5"].Dev != "eth0.20" {
+		t.Errorf("VLAN dev not captured: %+v", m["192.168.20.5"])
 	}
 }
 

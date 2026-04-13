@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/ipneigh"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
@@ -37,6 +38,7 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 		},
 		AllowlistEnabled: true,
 		AllowedMACs:      []string{"AA:BB:CC:DD:EE:01"},
+		LANInterface:     "eth0",
 	}
 
 	st := state.New()
@@ -47,11 +49,11 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 	})
 
 	// Fake neighbour table: 3 IPs, one overlaps with static (should be skipped).
-	fakeNeigh := func(_ context.Context) (map[string]string, error) {
-		return map[string]string{
-			"192.168.1.10": "aa:bb:cc:00:00:01", // overlap with static
-			"192.168.1.50": "aa:bb:cc:dd:ee:01", // overlap with dynamic
-			"192.168.1.99": "ff:ff:ff:00:00:01", // new neighbor
+	fakeNeigh := func(_ context.Context) (map[string]ipneigh.Entry, error) {
+		return map[string]ipneigh.Entry{
+			"192.168.1.10": {IP: "192.168.1.10", MAC: "aa:bb:cc:00:00:01", Dev: "eth0"}, // overlap with static
+			"192.168.1.50": {IP: "192.168.1.50", MAC: "aa:bb:cc:dd:ee:01", Dev: "eth0"}, // overlap with dynamic
+			"192.168.1.99": {IP: "192.168.1.99", MAC: "ff:ff:ff:00:00:01", Dev: "eth0"}, // new neighbor
 		}, nil
 	}
 
@@ -184,13 +186,14 @@ func TestClientsCollectorAllowlistDisabled(t *testing.T) {
 			{MAC: "AA:BB:CC:00:00:01", IP: "192.168.1.10", Name: "desktop"},
 		},
 		AllowlistEnabled: false,
+		LANInterface:     "eth0",
 	}
 
 	st := state.New()
 
-	fakeNeigh := func(_ context.Context) (map[string]string, error) {
-		return map[string]string{
-			"192.168.1.99": "ff:ff:ff:00:00:01",
+	fakeNeigh := func(_ context.Context) (map[string]ipneigh.Entry, error) {
+		return map[string]ipneigh.Entry{
+			"192.168.1.99": {IP: "192.168.1.99", MAC: "ff:ff:ff:00:00:01", Dev: "eth0"},
 		}, nil
 	}
 
@@ -214,6 +217,51 @@ func TestClientsCollectorAllowlistDisabled(t *testing.T) {
 		if cl.AllowlistStatus != "n/a" {
 			t.Errorf("client %s: AllowlistStatus = %q, want n/a", cl.IP, cl.AllowlistStatus)
 		}
+	}
+}
+
+func TestClientsCollectorFiltersNeighborsToLAN(t *testing.T) {
+	dir := t.TempDir()
+	leasesPath := filepath.Join(dir, "dnsmasq.leases")
+	if err := os.WriteFile(leasesPath, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	topo := &topology.Topology{
+		LANInterface:     "eth0",
+		AllowlistEnabled: false,
+	}
+
+	st := state.New()
+
+	fakeNeigh := func(_ context.Context) (map[string]ipneigh.Entry, error) {
+		return map[string]ipneigh.Entry{
+			// LAN neighbour — should be kept.
+			"192.168.1.99": {IP: "192.168.1.99", MAC: "ff:ff:ff:00:00:01", Dev: "eth0"},
+			// WAN neighbour (upstream gateway) — must be dropped.
+			"10.0.0.1": {IP: "10.0.0.1", MAC: "00:00:00:ff:ff:01", Dev: "eth1"},
+			// Neighbour learned on a tunnel — must be dropped too.
+			"10.0.1.1": {IP: "10.0.1.1", MAC: "00:00:00:ff:ff:02", Dev: "wg_sw"},
+		}, nil
+	}
+
+	c := NewClients(ClientsOpts{
+		Topology:   topo,
+		LeasesPath: leasesPath,
+		State:      st,
+		Neigh:      fakeNeigh,
+	})
+
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	clients, _ := st.SnapshotClients()
+	if len(clients) != 1 {
+		t.Fatalf("expected 1 LAN neighbour, got %d: %+v", len(clients), clients)
+	}
+	if clients[0].IP != "192.168.1.99" {
+		t.Errorf("expected 192.168.1.99, got %q", clients[0].IP)
 	}
 }
 
