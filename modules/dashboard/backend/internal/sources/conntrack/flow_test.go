@@ -185,6 +185,37 @@ func TestEnumerateInboundDNAT(t *testing.T) {
 	}
 }
 
+// TestEnumerateInboundDNATDefaultsToWAN guards against a silent data-loss
+// bug: the prerouting mangle chain in modules/nftables.nix returns early
+// for iifname != lanIf, so inbound packets on the WAN interface never
+// hit the fwmark set-rules and the conntrack row carries mark=0. Without
+// a default, RouteTag stays empty for these deterministically WAN-routed
+// flows, and downstream grouping-by-RouteTag loses them. This test uses
+// an empty RouteTags map (so the mark=0 lookup intentionally misses)
+// and asserts the inbound-DNAT branch falls back to "WAN".
+func TestEnumerateInboundDNATDefaultsToWAN(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "inbound_dnat_no_mark.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	flows, err := EnumerateFlows(f, EnumerateOpts{
+		LANPrefixes: []netip.Prefix{netip.MustParsePrefix("192.168.1.0/24")},
+	})
+	if err != nil {
+		t.Fatalf("EnumerateFlows: %v", err)
+	}
+	if len(flows) != 1 {
+		t.Fatalf("want 1 flow, got %d", len(flows))
+	}
+	if flows[0].Direction != DirInbound {
+		t.Fatalf("Direction = %v, want DirInbound", flows[0].Direction)
+	}
+	if flows[0].RouteTag != "WAN" {
+		t.Errorf("RouteTag = %q, want WAN (fallback for mark=0 inbound)", flows[0].RouteTag)
+	}
+}
+
 // TestEnumerateDoubleNATRouterSessionIsNotDNAT guards against a subtle
 // misclassification: when the router's WAN address is itself in RFC1918
 // / CGNAT space (double-NAT or ISP-issued 100.64.0.0/10), an inbound SSH
