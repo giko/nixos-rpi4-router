@@ -146,25 +146,36 @@ func sliceCakeBlock(lines []string) []string {
 }
 
 // ParseHTB extracts HTB outer + fq_codel inner counters.
-// The "Sent" line we care about is the LAST one (the fq_codel leaf
-// totals); HTB's own Sent line counts the same packets but we want
-// the leaf so any HTB-internal direct packets are not double-counted.
+//
+// The "Sent" line we care about is the LAST one INSIDE the htb block
+// (the fq_codel leaf totals); HTB's own Sent line counts the same
+// packets but we want the leaf so any HTB-internal direct packets are
+// not double-counted.
+//
+// Bounded to the htb block (mirroring ParseCAKE's sliceCakeBlock). The
+// IFB device only ships htb+fq_codel today, but a future config that
+// adds a sibling qdisc on the same device would otherwise leak its
+// counters into ours — same class of bug ParseCAKE was patched for.
 func ParseHTB(raw string) (QdiscStats, error) {
 	q := QdiscStats{Kind: "htb+fq_codel"}
-	lines := splitLines(raw)
+	all := splitLines(raw)
+	htbLines := sliceHTBBlock(all)
+	if len(htbLines) == 0 {
+		return QdiscStats{}, fmt.Errorf("tc: no `qdisc htb` block found in HTB output")
+	}
 	var lastSent string
-	for _, ln := range lines {
+	for _, ln := range htbLines {
 		t := strings.TrimSpace(ln)
 		if strings.HasPrefix(t, "Sent ") {
 			lastSent = t
 		}
 	}
 	if lastSent == "" {
-		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in HTB output")
+		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in HTB block")
 	}
 	q.SentBytes, q.SentPackets, q.Dropped, q.Overlimits, q.Requeues = parseSentLine(lastSent)
 
-	for _, ln := range lines {
+	for _, ln := range htbLines {
 		t := strings.TrimSpace(ln)
 		if strings.HasPrefix(t, "backlog ") {
 			q.BacklogBytes, q.BacklogPkts = parseBacklogLine(t)
@@ -180,6 +191,33 @@ func ParseHTB(raw string) (QdiscStats, error) {
 		}
 	}
 	return q, nil
+}
+
+// sliceHTBBlock returns the contiguous lines from the first
+// `qdisc htb` line up to (but not including) the next sibling root
+// qdisc line. Nested qdiscs (e.g. the fq_codel inside htb) are kept
+// because their declaration includes `parent <handle>` rather than
+// `root`.
+func sliceHTBBlock(lines []string) []string {
+	start := -1
+	for i, ln := range lines {
+		if strings.HasPrefix(strings.TrimSpace(ln), "qdisc htb") {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		return nil
+	}
+	end := len(lines)
+	for j := start + 1; j < len(lines); j++ {
+		t := strings.TrimSpace(lines[j])
+		if strings.HasPrefix(t, "qdisc ") && !strings.Contains(t, " parent ") {
+			end = j
+			break
+		}
+	}
+	return lines[start:end]
 }
 
 // --- helpers ---
@@ -296,6 +334,8 @@ func parseCakeTins(lines []string) []CAKETin {
 	names := strings.Fields(lines[header])
 	// "Bulk Best Effort Voice" — note "Best Effort" is 2 fields, so we
 	// rejoin: the line has exactly 4 tokens with diffserv3.
+	// TODO: this rejoin only handles CAKE diffserv3; diffserv4 (4 tins:
+	// Bulk / Best Effort / Video / Voice) would need a different rejoin.
 	if len(names) == 4 && names[1] == "Best" && names[2] == "Effort" {
 		names = []string{"Bulk", "Best Effort", "Voice"}
 	}

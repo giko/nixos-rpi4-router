@@ -63,3 +63,38 @@ func TestParseHTBFromFixture(t *testing.T) {
 		t.Errorf("NewFlowCount = 0; expected populated from fq_codel")
 	}
 }
+
+func TestParseCakeMissingCakeBlock(t *testing.T) {
+	// eth0-style output (mq + fq_codel, no cake) must produce a clear
+	// error so the QoS collector can log it instead of silently emitting
+	// zeros.
+	raw := `qdisc mq 0: root
+qdisc fq_codel 0: parent :1 limit 10240p flows 1024
+ Sent 100 bytes 5 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+`
+	if _, err := ParseCAKE(raw); err == nil {
+		t.Fatal("ParseCAKE on non-cake output should error")
+	}
+}
+
+func TestParseCakeEmpty(t *testing.T) {
+	if _, err := ParseCAKE(""); err == nil {
+		t.Fatal("ParseCAKE on empty input should error")
+	}
+}
+
+func TestParseHTBMissingHTBBlock(t *testing.T) {
+	raw := `qdisc fq_codel 0: parent :1 limit 10240p flows 1024
+ Sent 100 bytes 5 pkt (dropped 0, overlimits 0 requeues 0)
+`
+	if _, err := ParseHTB(raw); err == nil {
+		t.Fatal("ParseHTB on non-htb output should error")
+	}
+}
+
+func TestParseHTBEmpty(t *testing.T) {
+	if _, err := ParseHTB(""); err == nil {
+		t.Fatal("ParseHTB on empty input should error")
+	}
+}
