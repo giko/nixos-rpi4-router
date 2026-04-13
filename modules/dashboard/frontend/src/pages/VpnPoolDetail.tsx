@@ -104,11 +104,13 @@ export function VpnPoolDetail() {
     refetchInterval: 5_000,
   });
 
-  // Check error state FIRST. On a failed cold fetch, React Query leaves
-  // `data` undefined AND sets `isError=true`; if we checked !data first
-  // we'd hang forever on "Loading..." because the error branch below
-  // would be unreachable.
-  if (poolsQ.isError || clientsQ.isError) {
+  // Cold-failure guard: only render the full error banner when no
+  // cached data is available yet. React Query keeps `data` populated on
+  // failed REFETCHES after a successful first load, so transient backend
+  // hiccups should leave the rendered pool view in place and be
+  // communicated with a small inline warning in the header instead.
+  const noData = !poolsQ.data || !clientsQ.data;
+  if ((poolsQ.isError || clientsQ.isError) && noData) {
     return (
       <div className="text-sm text-rose font-mono">
         Failed to load pool data — retry shortly.
@@ -126,6 +128,7 @@ export function VpnPoolDetail() {
   ) {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
   }
+  const refetchFailed = poolsQ.isError || clientsQ.isError;
 
   const pool: Pool | undefined = poolsQ.data.data.pools.find(
     (p) => p.name === name,
@@ -214,7 +217,14 @@ export function VpnPoolDetail() {
           </Link>
           <h1 className="text-lg font-semibold">{pool.name}</h1>
         </div>
-        <StaleIndicator stale={combinedStale} updatedAt={combinedUpdatedAt} />
+        <div className="flex items-center gap-3">
+          {refetchFailed && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose">
+              Refetch failed
+            </span>
+          )}
+          <StaleIndicator stale={combinedStale} updatedAt={combinedUpdatedAt} />
+        </div>
       </div>
 
       {/* Stat tiles */}
