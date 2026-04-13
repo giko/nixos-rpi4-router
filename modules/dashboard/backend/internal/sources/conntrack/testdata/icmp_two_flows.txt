@@ -1,0 +1,2 @@
+ipv4     2 icmp     1 29 src=192.168.1.42 dst=1.1.1.1 type=8 code=0 id=7001 packets=3 bytes=252 src=1.1.1.1 dst=198.51.100.4 type=0 code=0 id=7001 packets=3 bytes=252 mark=0 use=1
+ipv4     2 icmp     1 29 src=192.168.1.42 dst=1.1.1.1 type=8 code=0 id=7002 packets=3 bytes=300 src=1.1.1.1 dst=198.51.100.4 type=0 code=0 id=7002 packets=3 bytes=300 mark=0 use=1
