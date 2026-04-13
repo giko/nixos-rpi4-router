@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Client talks to the AdGuard Home REST API.
@@ -138,6 +140,51 @@ func (c *Client) FetchQueryLog(ctx context.Context, opts QueryLogOptions) (json.
 	}
 
 	return envelope.Data, nil
+}
+
+// QueryLogResponse is the decoded shape of /control/querylog. "data" is
+// kept as raw JSON so consumers can decode into whatever per-entry shape
+// they need (the background dns_ingest collector maps into its own row
+// type; the /api/adguard/querylog handler forwards the array verbatim).
+type QueryLogResponse struct {
+	Oldest string          `json:"oldest"`
+	Data   json.RawMessage `json:"data"`
+}
+
+// FetchQueryLogPage pulls one page of the global query log filtered by
+// older_than. Used by the background dns_ingest collector with its
+// watermark cursor. Does NOT filter by client — consumers filter
+// locally after ingestion.
+func (c *Client) FetchQueryLogPage(ctx context.Context, olderThan time.Time, limit int) (QueryLogResponse, error) {
+	u := c.base.JoinPath("/control/querylog")
+
+	q := url.Values{}
+	if !olderThan.IsZero() {
+		q.Set("older_than", olderThan.UTC().Format("2006-01-02T15:04:05Z"))
+	}
+	q.Set("limit", strconv.Itoa(limit))
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return QueryLogResponse{}, fmt.Errorf("adguard: build request: %w", err)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return QueryLogResponse{}, fmt.Errorf("adguard: GET querylog page: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return QueryLogResponse{}, fmt.Errorf("adguard: GET querylog page: status %d", resp.StatusCode)
+	}
+
+	var body QueryLogResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return QueryLogResponse{}, fmt.Errorf("adguard: decode querylog page: %w", err)
+	}
+	return body, nil
 }
 
 // buildSearch concatenates client and domain with a space when both are set.
