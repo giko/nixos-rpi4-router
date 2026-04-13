@@ -155,3 +155,15 @@ qdisc fq_codel 8004: parent 1:1 limit 10240p flows 1024 quantum 1514
 		t.Errorf("Requeues = %d, want 7 (from htb outer)", q.Requeues)
 	}
 }
+
+func TestParseHTBMissingFqCodelLeaf(t *testing.T) {
+	// htb-only output (fq_codel leaf failed to attach) — must error,
+	// not silently return zeroed leaf stats and mask a broken shaper.
+	raw := `qdisc htb 1: root refcnt 2 r2q 10 default 0x1
+ Sent 999 bytes 9 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+`
+	if _, err := ParseHTB(raw); err == nil {
+		t.Fatal("ParseHTB on htb-without-fq_codel input should error")
+	}
+}

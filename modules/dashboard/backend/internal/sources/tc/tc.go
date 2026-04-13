@@ -186,15 +186,18 @@ func ParseHTB(raw string) (QdiscStats, error) {
 		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in HTB block")
 	}
 
+	// Reject incomplete output: htb-without-fq_codel-leaf would yield
+	// firstSent == lastSent and silently mask a broken ingress shaper
+	// (e.g. when `tc qdisc replace … fq_codel` fails during the cake-qos
+	// service startup). HTB+fq_codel is the only valid shape on the IFB
+	// today; one Sent line means the leaf is gone.
+	if firstSent == lastSent {
+		return QdiscStats{}, fmt.Errorf("tc: HTB block missing fq_codel leaf qdisc (only one Sent line found)")
+	}
 	// Leaf-level totals (bytes, packets, dropped) — from fq_codel.
 	q.SentBytes, q.SentPackets, q.Dropped, _, _ = parseSentLine(lastSent)
-	// Rate-limit signal (overlimits, requeues) — from htb outer if
-	// distinct from the leaf, else fall back to whatever lastSent reported.
-	if firstSent != "" && firstSent != lastSent {
-		_, _, _, q.Overlimits, q.Requeues = parseSentLine(firstSent)
-	} else {
-		_, _, _, q.Overlimits, q.Requeues = parseSentLine(lastSent)
-	}
+	// Rate-limit signal (overlimits, requeues) — from htb outer.
+	_, _, _, q.Overlimits, q.Requeues = parseSentLine(firstSent)
 
 	for _, ln := range htbLines {
 		t := strings.TrimSpace(ln)
