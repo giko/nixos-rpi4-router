@@ -19,6 +19,7 @@ type Topology struct {
 	AllowlistEnabled bool          `json:"allowlist_enabled"`
 	AllowedMACs      []string      `json:"allowed_macs"`
 	LANInterface     string        `json:"lan_interface"`
+	WANInterface     string        `json:"wan_interface"`
 }
 
 // Tunnel describes a WireGuard tunnel with its fwmark and routing table.

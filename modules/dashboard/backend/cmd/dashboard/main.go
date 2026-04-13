@@ -50,16 +50,32 @@ func main() {
 
 	st := state.New()
 
-	// Build interface list: physical + tunnel interfaces.
-	ifaces := []string{"eth0", "eth1"}
+	// Build the interface list and role map from the topology. A missing
+	// LAN/WAN name (dev mode with no topology.json) falls back to the
+	// historical "eth0"/"eth1" defaults so local runs keep working.
+	lanIf := topo.LANInterface
+	if lanIf == "" {
+		lanIf = "eth0"
+	}
+	wanIf := topo.WANInterface
+	if wanIf == "" {
+		wanIf = "eth1"
+	}
+	ifaces := []string{lanIf, wanIf}
+	roles := map[string]string{
+		lanIf: "lan",
+		wanIf: "wan",
+	}
 	for _, tun := range topo.Tunnels {
 		ifaces = append(ifaces, tun.Interface)
+		roles[tun.Interface] = "tunnel"
 	}
 
 	collectors := []collector.Collector{
 		collector.NewTraffic(collector.TrafficOpts{
 			NetDevPath: "/proc/net/dev",
 			Interfaces: ifaces,
+			Roles:      roles,
 			State:      st,
 		}),
 		collector.NewSystem(collector.SystemOpts{
