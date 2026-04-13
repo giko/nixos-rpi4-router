@@ -238,3 +238,40 @@ func TestEnumerateRoutedInboundIsNotDNAT(t *testing.T) {
 		t.Fatalf("routed LAN flow should be skipped (not DNAT), got %d flows", len(flows))
 	}
 }
+
+// TestEnumerateOffloadedFlowKeepsBytes is the regression canary for the
+// flowtable `counter` keyword in modules/performance.nix. Without that
+// keyword, offloaded flows (those tagged [OFFLOAD] by conntrack) stop
+// receiving byte-counter updates and the traffic subsystem silently goes
+// blind on the hottest flows. The parser itself is agnostic to flag
+// tokens — it only consumes key=value fields — so this test also proves
+// that adding [OFFLOAD] / [ASSURED] to a line does not break extraction.
+func TestEnumerateOffloadedFlowKeepsBytes(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "offloaded_flow.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	flows, err := EnumerateFlows(f, EnumerateOpts{
+		RouteTags: map[uint32]string{0x20000: "wg_sw"},
+		LANPrefixes: []netip.Prefix{
+			netip.MustParsePrefix("192.168.1.0/24"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("EnumerateFlows: %v", err)
+	}
+	if len(flows) != 1 {
+		t.Fatalf("want 1 flow, got %d", len(flows))
+	}
+	if flows[0].OrigBytes != 50_000_000 || flows[0].ReplyBytes != 800_000_000 {
+		t.Fatalf("offloaded flow dropped bytes: orig=%d reply=%d",
+			flows[0].OrigBytes, flows[0].ReplyBytes)
+	}
+	if flows[0].Direction != DirOutbound {
+		t.Errorf("Direction = %v, want DirOutbound", flows[0].Direction)
+	}
+	if flows[0].RouteTag != "wg_sw" {
+		t.Errorf("RouteTag = %q, want wg_sw", flows[0].RouteTag)
+	}
+}
