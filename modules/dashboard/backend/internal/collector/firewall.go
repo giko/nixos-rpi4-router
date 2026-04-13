@@ -70,7 +70,10 @@ func (c *Firewall) Run(ctx context.Context) error {
 			Handle: ct.Handle, Comment: ct.Comment,
 			Packets: ct.Packets, Bytes: ct.Bytes,
 		})
-		if ct.Family == "inet" && ct.Table == "filter" && ct.ChainName == "forward" {
+		// Only "drop" rules count toward "blocked" forwards. A
+		// `counter accept` or `counter return` rule's hits are
+		// not blocked traffic.
+		if ct.Family == "inet" && ct.Table == "filter" && ct.ChainName == "forward" && ct.Verdict == "drop" {
 			forwardDropTotal += ct.Packets
 		}
 	}
@@ -98,12 +101,19 @@ func (c *Firewall) Run(ctx context.Context) error {
 		trimmed = append([]forwardDropSample{*baseline}, trimmed...)
 	}
 	c.samples = trimmed
+	// Only publish a non-zero 1h delta once we actually have ≥1h of
+	// samples; otherwise the value would represent "since startup"
+	// rather than "in the last 1h". The oldest sample's age must be
+	// >= 1h before this metric is meaningful.
 	var delta int64
 	if len(c.samples) > 1 {
-		delta = c.samples[len(c.samples)-1].count - c.samples[0].count
-		if delta < 0 {
-			delta = 0 // counter reset (nftables reload) — start over.
-			c.samples = []forwardDropSample{c.samples[len(c.samples)-1]}
+		oldest := c.samples[0]
+		if !oldest.ts.After(oneHourAgo) {
+			delta = c.samples[len(c.samples)-1].count - oldest.count
+			if delta < 0 {
+				delta = 0 // counter reset (nftables reload) — start over.
+				c.samples = []forwardDropSample{c.samples[len(c.samples)-1]}
+			}
 		}
 	}
 	c.mu.Unlock()

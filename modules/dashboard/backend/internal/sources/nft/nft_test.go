@@ -119,6 +119,35 @@ func TestParseRuleWithMultipleCounters(t *testing.T) {
 	}
 }
 
+func TestParseCounterVerdict(t *testing.T) {
+	raw := []byte(`{"nftables":[
+		{"chain":{"family":"inet","table":"filter","name":"input","handle":1,"type":"filter","hook":"input","prio":0,"policy":"drop"}},
+		{"rule":{"family":"inet","table":"filter","chain":"input","handle":10,"expr":[{"counter":{"packets":1,"bytes":2}},{"drop":null}]}},
+		{"rule":{"family":"inet","table":"filter","chain":"input","handle":11,"expr":[{"counter":{"packets":3,"bytes":4}},{"accept":null}]}},
+		{"rule":{"family":"inet","table":"filter","chain":"input","handle":12,"expr":[{"counter":{"packets":5,"bytes":6}}]}}
+	]}`)
+	r, err := Parse(raw)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(r.Counters) != 3 {
+		t.Fatalf("Counters count = %d, want 3", len(r.Counters))
+	}
+	verdicts := map[int]string{}
+	for _, c := range r.Counters {
+		verdicts[c.Handle] = c.Verdict
+	}
+	if verdicts[10] != "drop" {
+		t.Errorf("handle 10 verdict = %q, want drop", verdicts[10])
+	}
+	if verdicts[11] != "accept" {
+		t.Errorf("handle 11 verdict = %q, want accept", verdicts[11])
+	}
+	if verdicts[12] != "" {
+		t.Errorf("handle 12 verdict = %q, want empty (no verdict)", verdicts[12])
+	}
+}
+
 func TestParseUPnPPolicyRuleSkipped(t *testing.T) {
 	// A rule in the inet/miniupnpd table that lacks a `dnat` target
 	// (e.g. a policy/return rule) must NOT be emitted as a mapping.

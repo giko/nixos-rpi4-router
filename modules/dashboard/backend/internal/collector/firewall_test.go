@@ -111,3 +111,62 @@ func TestFirewallCollectorBlockedForwardCount1h(t *testing.T) {
 		t.Errorf("BlockedForwardCount1h = %d, want 40", got.BlockedForwardCount1h)
 	}
 }
+
+func TestFirewallCollectorIgnoresAcceptCountersInForward(t *testing.T) {
+	st := state.New()
+	stub := func(_ context.Context, _ ...string) ([]byte, error) {
+		return []byte(`{"nftables":[
+			{"chain":{"family":"inet","table":"filter","name":"forward","handle":1,"type":"filter","hook":"forward","prio":0,"policy":"drop"}},
+			{"rule":{"family":"inet","table":"filter","chain":"forward","handle":10,"expr":[{"counter":{"packets":99,"bytes":0}},{"accept":null}]}},
+			{"rule":{"family":"inet","table":"filter","chain":"forward","handle":11,"expr":[{"counter":{"packets":7,"bytes":0}},{"drop":null}]}}
+		]}`), nil
+	}
+	now := time.Unix(1_700_000_000, 0)
+	c := NewFirewall(FirewallOpts{
+		State: st, Topology: &topology.Topology{}, Run: stub,
+		Clock: func() time.Time { return now },
+	})
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("run1: %v", err)
+	}
+	now = now.Add(2 * time.Hour) // ensure 1h-warmup guard is satisfied
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("run2: %v", err)
+	}
+	got, _ := st.SnapshotFirewall()
+	// Only the drop rule (handle 11, 7 packets) should count.
+	// Both ticks see the same total (7), so the delta is 0.
+	if got.BlockedForwardCount1h != 0 {
+		t.Errorf("BlockedForwardCount1h = %d, want 0 (drop counter unchanged; accept counter must not count)", got.BlockedForwardCount1h)
+	}
+}
+
+func TestFirewallCollectorWithholdsBlockedCountUntil1hOfHistory(t *testing.T) {
+	st := state.New()
+	var counter int64
+	stub := func(_ context.Context, _ ...string) ([]byte, error) {
+		return []byte(fmt.Sprintf(`{"nftables":[
+			{"chain":{"family":"inet","table":"filter","name":"forward","handle":1,"type":"filter","hook":"forward","prio":0,"policy":"drop"}},
+			{"rule":{"family":"inet","table":"filter","chain":"forward","handle":2,"expr":[{"counter":{"packets":%d,"bytes":0}},{"drop":null}]}}
+		]}`, counter)), nil
+	}
+	now := time.Unix(1_700_000_000, 0)
+	clock := func() time.Time { return now }
+	c := NewFirewall(FirewallOpts{State: st, Topology: &topology.Topology{}, Run: stub, Clock: clock})
+
+	// Sample 1 at t=0: count=10
+	counter = 10
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("run1: %v", err)
+	}
+	// Sample 2 at t=30min: count=30 (only 30min of history → still 0)
+	now = now.Add(30 * time.Minute)
+	counter = 30
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("run2: %v", err)
+	}
+	got, _ := st.SnapshotFirewall()
+	if got.BlockedForwardCount1h != 0 {
+		t.Errorf("BlockedForwardCount1h = %d, want 0 (only 30min of history)", got.BlockedForwardCount1h)
+	}
+}

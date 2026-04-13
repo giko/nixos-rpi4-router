@@ -35,15 +35,16 @@ type Chain struct {
 }
 
 // Counter is one inline counter expression's value, tagged with the
-// chain it lives in and the rule's nft handle. The handle is what
-// nft uses to identify a rule; it's the only stable cross-reference
-// across reloads (rules don't have user-visible ids).
+// chain it lives in, the rule's nft handle, and the rule's
+// terminating verdict (drop / accept / return / jump / "" when the
+// rule has none — e.g. a mangle rule).
 type Counter struct {
 	Family    string `json:"family"`
 	Table     string `json:"table"`
 	ChainName string `json:"chain"`
 	Handle    int    `json:"handle"`
 	Comment   string `json:"comment,omitempty"`
+	Verdict   string `json:"verdict,omitempty"`
 	Packets   int64  `json:"packets"`
 	Bytes     int64  `json:"bytes"`
 }
@@ -148,6 +149,7 @@ func Parse(raw []byte) (*Ruleset, error) {
 }
 
 func extractCounters(family, table, chain string, handle int, comment string, expr []json.RawMessage, out *Ruleset) {
+	verdict := extractVerdict(expr)
 	for _, e := range expr {
 		var holder struct {
 			Counter *struct {
@@ -163,10 +165,30 @@ func extractCounters(family, table, chain string, handle int, comment string, ex
 		}
 		out.Counters = append(out.Counters, Counter{
 			Family: family, Table: table, ChainName: chain,
-			Handle: handle, Comment: comment,
+			Handle: handle, Comment: comment, Verdict: verdict,
 			Packets: holder.Counter.Packets, Bytes: holder.Counter.Bytes,
 		})
 	}
+}
+
+// extractVerdict walks a rule's expression array and returns the
+// terminating verdict keyword if one is present. Recognised verdicts
+// are nft's standard terminating statements that appear as bare
+// `{"<verdict>": null}` objects. Returns "" when no verdict is
+// present (mangle, set-update, etc.).
+func extractVerdict(expr []json.RawMessage) string {
+	for _, e := range expr {
+		var holder map[string]json.RawMessage
+		if err := json.Unmarshal(e, &holder); err != nil {
+			continue
+		}
+		for _, v := range []string{"drop", "accept", "return", "reject", "jump", "goto", "queue", "continue"} {
+			if _, ok := holder[v]; ok {
+				return v
+			}
+		}
+	}
+	return ""
 }
 
 // extractUPnPMapping walks one rule's expression array looking for
