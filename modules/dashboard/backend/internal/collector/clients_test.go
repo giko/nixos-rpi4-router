@@ -220,6 +220,101 @@ func TestClientsCollectorAllowlistDisabled(t *testing.T) {
 	}
 }
 
+func TestClientsCollectorWANBeatsLeftoverTunnelFlow(t *testing.T) {
+	// Non-pooled client with 20 WAN (mark=0) flows and 1 leftover
+	// tunnel flow. Route must be "wan" — a single stray tunnel
+	// connection must not flip the displayed route to tunnel:*.
+	dir := t.TempDir()
+	leasesPath := filepath.Join(dir, "dnsmasq.leases")
+	if err := os.WriteFile(leasesPath, []byte("1712800000 aa:bb:cc:dd:ee:01 192.168.1.50 phone *\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	topo := &topology.Topology{
+		Tunnels: []topology.Tunnel{
+			{Name: "wg_sw", Interface: "wg_sw", Fwmark: "0x20000", RoutingTable: 200},
+		},
+		LANInterface:     "eth0",
+		AllowlistEnabled: false,
+	}
+
+	st := state.New()
+	st.SetClientConns(map[string]conntrack.ClientConnInfo{
+		"192.168.1.50": {
+			TotalConns:  21,
+			TunnelConns: map[string]int{"0x20000": 1},
+		},
+	})
+
+	c := NewClients(ClientsOpts{
+		Topology:   topo,
+		LeasesPath: leasesPath,
+		State:      st,
+	})
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	clients, _ := st.SnapshotClients()
+	var found bool
+	for _, cl := range clients {
+		if cl.IP == "192.168.1.50" {
+			found = true
+			if cl.Route != "wan" {
+				t.Errorf("Route = %q, want wan (WAN flows dominate)", cl.Route)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("client 192.168.1.50 missing")
+	}
+}
+
+func TestClientsCollectorTunnelBeatsWAN(t *testing.T) {
+	// Inverse check: tunnel count > WAN leftover → route = tunnel:*.
+	dir := t.TempDir()
+	leasesPath := filepath.Join(dir, "dnsmasq.leases")
+	if err := os.WriteFile(leasesPath, []byte("1712800000 aa:bb:cc:dd:ee:01 192.168.1.50 phone *\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	topo := &topology.Topology{
+		Tunnels: []topology.Tunnel{
+			{Name: "wg_sw", Interface: "wg_sw", Fwmark: "0x20000", RoutingTable: 200},
+		},
+		LANInterface:     "eth0",
+		AllowlistEnabled: false,
+	}
+
+	st := state.New()
+	st.SetClientConns(map[string]conntrack.ClientConnInfo{
+		"192.168.1.50": {
+			TotalConns:  10,
+			TunnelConns: map[string]int{"0x20000": 8}, // WAN leftover = 2
+		},
+	})
+
+	c := NewClients(ClientsOpts{
+		Topology:   topo,
+		LeasesPath: leasesPath,
+		State:      st,
+	})
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	clients, _ := st.SnapshotClients()
+	var got string
+	for _, cl := range clients {
+		if cl.IP == "192.168.1.50" {
+			got = cl.Route
+		}
+	}
+	if got != "tunnel:wg_sw" {
+		t.Errorf("Route = %q, want tunnel:wg_sw (tunnel dominates)", got)
+	}
+}
+
 func TestClientsCollectorFiltersNeighborsToLAN(t *testing.T) {
 	dir := t.TempDir()
 	leasesPath := filepath.Join(dir, "dnsmasq.leases")

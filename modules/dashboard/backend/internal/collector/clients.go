@@ -192,11 +192,15 @@ func (c *Clients) Run(ctx context.Context) error {
 			cl.Route = "pool:" + pool
 		} else {
 			// Non-pooled client: pick the configured tunnel with the
-			// most connections. We only consider marks that resolve to
-			// a known tunnel (ignoring e.g. the 0x10000 WAN-forced mark
-			// used by the router) and tie-break deterministically by
-			// tunnel name so a split of equal connections doesn't flap
-			// the displayed route between refreshes.
+			// most connections, but only if that count beats the
+			// leftover unmarked WAN traffic. A single stale tunnel
+			// flow alongside many WAN flows must not flip the route
+			// to "tunnel:*" — compare the top tunnel's count to
+			// `TotalConns - sum(TunnelConns)` and fall back to "wan"
+			// when WAN-count >= tunnel-count.
+			//
+			// Tie-break by tunnel name so a split of equal connections
+			// doesn't flap the displayed route between refreshes.
 			cl.Route = "wan"
 			if info, ok := connInfo[cl.IP]; ok {
 				type tunStat struct {
@@ -204,7 +208,9 @@ func (c *Clients) Run(ctx context.Context) error {
 					count int
 				}
 				var stats []tunStat
+				var tunnelSum int
 				for mark, count := range info.TunnelConns {
+					tunnelSum += count
 					if tun, ok := c.tunnelByMark[mark]; ok {
 						stats = append(stats, tunStat{name: tun, count: count})
 					}
@@ -216,7 +222,13 @@ func (c *Clients) Run(ctx context.Context) error {
 						}
 						return stats[i].name < stats[j].name
 					})
-					cl.Route = "tunnel:" + stats[0].name
+					wanCount := info.TotalConns - tunnelSum
+					if wanCount < 0 {
+						wanCount = 0
+					}
+					if stats[0].count > wanCount {
+						cl.Route = "tunnel:" + stats[0].name
+					}
 				}
 			}
 		}
