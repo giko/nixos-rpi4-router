@@ -523,7 +523,8 @@ func copyPBR(src model.PBR) model.PBR {
 		for i, r := range src.SourceRules {
 			dst.SourceRules[i] = r
 			if r.Sources != nil {
-				dst.SourceRules[i].Sources = append([]string(nil), r.Sources...)
+				dst.SourceRules[i].Sources = make([]string, len(r.Sources))
+				copy(dst.SourceRules[i].Sources, r.Sources)
 			}
 		}
 	}
@@ -532,7 +533,8 @@ func copyPBR(src model.PBR) model.PBR {
 		for i, r := range src.DomainRules {
 			dst.DomainRules[i] = r
 			if r.Domains != nil {
-				dst.DomainRules[i].Domains = append([]string(nil), r.Domains...)
+				dst.DomainRules[i].Domains = make([]string, len(r.Domains))
+				copy(dst.DomainRules[i].Domains, r.Domains)
 			}
 		}
 	}
@@ -541,7 +543,8 @@ func copyPBR(src model.PBR) model.PBR {
 		for i, r := range src.PooledRules {
 			dst.PooledRules[i] = r
 			if r.Sources != nil {
-				dst.PooledRules[i].Sources = append([]string(nil), r.Sources...)
+				dst.PooledRules[i].Sources = make([]string, len(r.Sources))
+				copy(dst.PooledRules[i].Sources, r.Sources)
 			}
 		}
 	}

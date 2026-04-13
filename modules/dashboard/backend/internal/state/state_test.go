@@ -520,6 +520,30 @@ func TestQoSRoundTrip(t *testing.T) {
 	}
 }
 
+func TestFirewallPreservesEmptyPBRSlices(t *testing.T) {
+	// Empty (non-nil) Sources/Domains lists must round-trip as
+	// non-nil empty slices, not collapse to nil. Otherwise JSON
+	// serialization flips `[]` → `null`.
+	s := New()
+	s.SetFirewall(model.Firewall{
+		PBR: model.PBR{
+			SourceRules: []model.PBRSourceRule{{Sources: []string{}, Tunnel: "wan"}},
+			DomainRules: []model.PBRDomainRule{{Tunnel: "wan", Domains: []string{}}},
+			PooledRules: []model.PBRPooledRule{{Sources: []string{}, Pool: "all"}},
+		},
+	})
+	out, _ := s.SnapshotFirewall()
+	if out.PBR.SourceRules[0].Sources == nil {
+		t.Error("SourceRules[0].Sources collapsed to nil")
+	}
+	if out.PBR.DomainRules[0].Domains == nil {
+		t.Error("DomainRules[0].Domains collapsed to nil")
+	}
+	if out.PBR.PooledRules[0].Sources == nil {
+		t.Error("PooledRules[0].Sources collapsed to nil")
+	}
+}
+
 func TestConcurrentReadersAndWriter(t *testing.T) {
 	s := New()
 	const goroutines = 10
