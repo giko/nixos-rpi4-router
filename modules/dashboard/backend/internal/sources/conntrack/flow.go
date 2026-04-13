@@ -9,7 +9,6 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Direction uint8
@@ -56,7 +55,6 @@ type FlowBytes struct {
 	LocalPort     uint16 // client-side port (derived from Direction)
 	RemoteIP      netip.Addr
 	RemotePort    uint16
-	Age           time.Duration
 	State         string // "ESTABLISHED", "TIME_WAIT", etc.
 }
 
@@ -278,6 +276,19 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 		fb.RemotePort = fb.Key.OrigSrcPort
 		fb.NATPublicIP = fb.Key.OrigDstIP
 		fb.NATPublicPort = fb.Key.OrigDstPort
+		// The prerouting mangle chain in modules/nftables.nix returns early
+		// for iifname != lanIf, so inbound packets on the WAN interface
+		// never hit the fwmark set-rules — the conntrack row carries
+		// mark=0, which leaves RouteTag empty after the mark lookup above.
+		// But these flows are deterministically WAN-routed (we only reach
+		// this branch when the reply src is a LAN host and neither orig
+		// src nor orig dst is a LAN host, i.e. a peer came in over WAN
+		// and was DNAT'd to a local client). Default the tag to "WAN" so
+		// downstream grouping-by-RouteTag doesn't silently lose inbound
+		// DNAT flows.
+		if fb.RouteTag == "" {
+			fb.RouteTag = "WAN"
+		}
 	default:
 		// Neither side is LAN — not our flow (e.g. router-originated on a
 		// double-NAT WAN, site-to-site with private peers, or plain
