@@ -538,6 +538,10 @@ func copyPBR(src model.PBR) model.PBR {
 			}
 		}
 	}
+	if src.SourceDomainRules != nil {
+		dst.SourceDomainRules = make([]model.PBRSourceDomainRule, len(src.SourceDomainRules))
+		copy(dst.SourceDomainRules, src.SourceDomainRules)
+	}
 	if src.PooledRules != nil {
 		dst.PooledRules = make([]model.PBRPooledRule, len(src.PooledRules))
 		for i, r := range src.PooledRules {

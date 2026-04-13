@@ -36,13 +36,14 @@ type PortForward struct {
 	Destination  string `json:"destination"`
 }
 
-// PBR bundles the three PBR rule kinds the dashboard surfaces.
+// PBR bundles the four PBR rule kinds the dashboard surfaces.
 // `pooled_rules` reuses Pool topology so the frontend can render
 // which clients feed which pool.
 type PBR struct {
-	SourceRules []PBRSourceRule `json:"source_rules"`
-	DomainRules []PBRDomainRule `json:"domain_rules"`
-	PooledRules []PBRPooledRule `json:"pooled_rules"`
+	SourceRules       []PBRSourceRule       `json:"source_rules"`
+	DomainRules       []PBRDomainRule       `json:"domain_rules"`
+	SourceDomainRules []PBRSourceDomainRule `json:"source_domain_rules"`
+	PooledRules       []PBRPooledRule       `json:"pooled_rules"`
 }
 
 type PBRSourceRule struct {
@@ -53,6 +54,16 @@ type PBRSourceRule struct {
 type PBRDomainRule struct {
 	Tunnel  string   `json:"tunnel"`
 	Domains []string `json:"domains"`
+}
+
+// PBRSourceDomainRule narrows routing to a single source IP whose
+// destination resolves to a domain in the named domain set. The
+// frontend cross-references DomainSet against PBR.DomainRules to show
+// the resolved domain list.
+type PBRSourceDomainRule struct {
+	Source    string `json:"source"`
+	DomainSet string `json:"domain_set"`
+	Tunnel    string `json:"tunnel"`
 }
 
 type PBRPooledRule struct {

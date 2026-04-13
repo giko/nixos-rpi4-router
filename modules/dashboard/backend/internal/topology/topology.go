@@ -18,11 +18,12 @@ type Topology struct {
 	StaticLeases     []StaticLease   `json:"static_leases"`
 	AllowlistEnabled bool            `json:"allowlist_enabled"`
 	AllowedMACs      []string        `json:"allowed_macs"`
-	PortForwards     []PortForward   `json:"port_forwards"`
-	PBRSourceRules   []PBRSourceRule `json:"pbr_source_rules"`
-	PBRDomainRules   []PBRDomainRule `json:"pbr_domain_rules"`
-	LANInterface     string          `json:"lan_interface"`
-	WANInterface     string          `json:"wan_interface"`
+	PortForwards         []PortForward         `json:"port_forwards"`
+	PBRSourceRules       []PBRSourceRule       `json:"pbr_source_rules"`
+	PBRDomainRules       []PBRDomainRule       `json:"pbr_domain_rules"`
+	PBRSourceDomainRules []PBRSourceDomainRule `json:"pbr_source_domain_rules"`
+	LANInterface         string                `json:"lan_interface"`
+	WANInterface         string                `json:"wan_interface"`
 }
 
 // Tunnel describes a WireGuard tunnel with its fwmark and routing table.
@@ -132,4 +133,15 @@ type PBRSourceRule struct {
 type PBRDomainRule struct {
 	Tunnel  string   `json:"tunnel"`
 	Domains []string `json:"domains"`
+}
+
+// PBRSourceDomainRule routes connections from a single `Source` IP whose
+// destination resolves to a domain in `DomainSet` through `Tunnel`.
+// This is the source ∧ domain-set combination rule from
+// `router.pbr.sourceDomainRules` — narrower than either source-only or
+// domain-only PBR.
+type PBRSourceDomainRule struct {
+	Source    string `json:"source"`
+	DomainSet string `json:"domain_set"`
+	Tunnel    string `json:"tunnel"`
 }

@@ -4,6 +4,7 @@ import type {
   PortForward,
   PBRSourceRule,
   PBRDomainRule,
+  PBRSourceDomainRule,
   PBRPooledRule,
   FirewallChain,
   RuleCounter,
@@ -92,6 +93,27 @@ const pooledRuleColumns: Column<PBRPooledRule>[] = [
     label: "Sources",
     render: (r) => <MonoText className="text-xs">{(r.sources ?? []).join(", ")}</MonoText>,
     sortValue: (r) => (r.sources ?? []).join(","),
+  },
+];
+
+const sourceDomainRuleColumns: Column<PBRSourceDomainRule>[] = [
+  {
+    key: "source",
+    label: "Source",
+    render: (r) => <MonoText>{r.source}</MonoText>,
+    sortValue: (r) => r.source,
+  },
+  {
+    key: "domain_set",
+    label: "Domain set",
+    render: (r) => <MonoText className="text-xs">{r.domain_set}</MonoText>,
+    sortValue: (r) => r.domain_set,
+  },
+  {
+    key: "tunnel",
+    label: "Tunnel",
+    render: (r) => <MonoText>{r.tunnel}</MonoText>,
+    sortValue: (r) => r.tunnel,
   },
 ];
 
@@ -228,6 +250,7 @@ export function Firewall() {
   const portForwards = rawRules.port_forwards ?? [];
   const sourceRules = rawRules.pbr?.source_rules ?? [];
   const domainRules = rawRules.pbr?.domain_rules ?? [];
+  const sourceDomainRules = rawRules.pbr?.source_domain_rules ?? [];
   const pooledRules = rawRules.pbr?.pooled_rules ?? [];
   const allowedMacs = rawRules.allowed_macs ?? [];
   const blockedForwardCount1h = rawRules.blocked_forward_count_1h ?? 0;
@@ -267,7 +290,7 @@ export function Firewall() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatTile label="Port forwards" value={String(portForwards.length)} />
-        <StatTile label="PBR rules" value={String(sourceRules.length + domainRules.length + pooledRules.length)} />
+        <StatTile label="PBR rules" value={String(sourceRules.length + domainRules.length + sourceDomainRules.length + pooledRules.length)} />
         <StatTile label="Allowed MACs" value={String(allowedMacs.length)} />
         <StatTile
           label="Blocked forwards (1h)"
@@ -317,6 +340,21 @@ export function Firewall() {
             columns={domainRuleColumns}
             rows={domainRules}
             rowKey={(r) => `${r.tunnel}|${(r.domains ?? []).join(",")}`}
+          />
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="label-xs">PBR — source ∧ domain rules</h2>
+        {sourceDomainRules.length === 0 ? (
+          <p className="text-sm text-on-surface-variant font-mono">
+            No source-and-domain PBR rules.
+          </p>
+        ) : (
+          <DataTable
+            columns={sourceDomainRuleColumns}
+            rows={sourceDomainRules}
+            rowKey={(r) => `${r.source}|${r.domain_set}|${r.tunnel}`}
           />
         )}
       </div>

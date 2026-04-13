@@ -126,9 +126,10 @@ func (c *Firewall) Run(ctx context.Context) error {
 		BlockedForwardCount1h: delta,
 		PortForwards:          []model.PortForward{},
 		PBR: model.PBR{
-			SourceRules: []model.PBRSourceRule{},
-			DomainRules: []model.PBRDomainRule{},
-			PooledRules: []model.PBRPooledRule{},
+			SourceRules:       []model.PBRSourceRule{},
+			DomainRules:       []model.PBRDomainRule{},
+			SourceDomainRules: []model.PBRSourceDomainRule{},
+			PooledRules:       []model.PBRPooledRule{},
 		},
 		AllowedMACs: []string{},
 		Chains:      make([]model.FirewallChain, 0, len(r.Chains)),
@@ -165,6 +166,13 @@ func (c *Firewall) Run(ctx context.Context) error {
 			out.PBR.DomainRules = append(out.PBR.DomainRules, model.PBRDomainRule{
 				Tunnel:  r.Tunnel,
 				Domains: domains,
+			})
+		}
+		for _, r := range topo.PBRSourceDomainRules {
+			out.PBR.SourceDomainRules = append(out.PBR.SourceDomainRules, model.PBRSourceDomainRule{
+				Source:    r.Source,
+				DomainSet: r.DomainSet,
+				Tunnel:    r.Tunnel,
 			})
 		}
 		for _, r := range topo.PooledRules {

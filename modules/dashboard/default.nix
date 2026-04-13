@@ -9,9 +9,17 @@ let
   # Guard allowedMacs — it's declared nullOr in nftables.nix.
   # Dereferencing .macs on null is a Nix eval error.
   allowlistEnabled = config.router.nftables.allowedMacs != null;
+  # Mirror the merge that modules/nftables.nix performs at rule-build
+  # time: explicit `allowedMacs.macs` plus every `dhcp.staticLeases[].mac`.
+  # Without this the dashboard under-reports the effective allowlist
+  # (e.g. mobile devices and Sonos units, which are added via
+  # staticLeases by convention, would be missing from /api/firewall/rules).
   allowlistMacs =
     if allowlistEnabled
-    then config.router.nftables.allowedMacs.macs
+    then lib.unique (
+      (map lib.toLower config.router.nftables.allowedMacs.macs)
+      ++ (map (l: lib.toLower l.mac) config.router.dhcp.staticLeases)
+    )
     else [];
 
   dashboardConfigJson = builtins.toJSON {
@@ -46,6 +54,10 @@ let
     pbr_domain_rules = lib.mapAttrsToList (tunnel: domains: {
       inherit tunnel domains;
     }) config.router.pbr.domainSets;
+    pbr_source_domain_rules = map (r: {
+      inherit (r) source tunnel;
+      domain_set = r.domainSet;
+    }) config.router.pbr.sourceDomainRules;
     lan_interface = config.router.lan.interface;
     wan_interface = config.router.wan.interface;
   };

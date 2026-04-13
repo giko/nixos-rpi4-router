@@ -116,10 +116,16 @@ export type PortForward = {
 };
 export type PBRSourceRule = { sources: string[]; tunnel: string };
 export type PBRDomainRule = { tunnel: string; domains: string[] };
+export type PBRSourceDomainRule = {
+  source: string;
+  domain_set: string;
+  tunnel: string;
+};
 export type PBRPooledRule = { sources: string[]; pool: string };
 export type PBR = {
   source_rules: PBRSourceRule[];
   domain_rules: PBRDomainRule[];
+  source_domain_rules: PBRSourceDomainRule[];
   pooled_rules: PBRPooledRule[];
 };
 export type FirewallRules = {
