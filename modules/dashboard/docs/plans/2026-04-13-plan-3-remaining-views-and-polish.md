@@ -171,7 +171,7 @@ Verify it parses:
 python3 -c 'import json; print(len(json.load(open("modules/dashboard/backend/internal/sources/nft/testdata/ruleset.json"))["nftables"]))'
 ```
 
-Expected: `10`.
+Expected: `11`.
 
 - [ ] **Step 2: Write the failing parser test**
 
