@@ -108,6 +108,87 @@ export type QueryLogEntry = {
   elapsedMs: string;
 };
 
+// --- Firewall ---
+export type PortForward = {
+  protocol: string;
+  external_port: number;
+  destination: string; // "ip:port"
+};
+export type PBRSourceRule = { sources: string[]; tunnel: string };
+export type PBRDomainRule = { tunnel: string; domains: string[] };
+export type PBRPooledRule = { sources: string[]; pool: string };
+export type PBR = {
+  source_rules: PBRSourceRule[];
+  domain_rules: PBRDomainRule[];
+  pooled_rules: PBRPooledRule[];
+};
+export type FirewallRules = {
+  port_forwards: PortForward[];
+  pbr: PBR;
+  allowed_macs: string[];
+  blocked_forward_count_1h: number;
+};
+export type RuleCounter = {
+  handle: number;
+  comment?: string;
+  packets: number;
+  bytes: number;
+};
+export type FirewallChain = {
+  family: string;
+  table: string;
+  name: string;
+  type: string;
+  hook: string;
+  priority: number;
+  policy: string;
+  handle: number;
+  counters: RuleCounter[];
+};
+export type UPnPLease = {
+  protocol: string;
+  external_port: number;
+  internal_addr: string;
+  internal_port: number;
+  description?: string;
+};
+
+// --- QoS ---
+export type CAKETin = {
+  name: string;
+  thresh_kbit: number;
+  target_us: number;
+  interval_us: number;
+  peak_delay_us: number;
+  avg_delay_us: number;
+  backlog_bytes: number;
+  packets: number;
+  bytes: number;
+  drops: number;
+  marks: number;
+};
+export type QdiscStats = {
+  kind: string;
+  bandwidth_bps: number;
+  sent_bytes: number;
+  sent_packets: number;
+  dropped: number;
+  overlimits: number;
+  requeues: number;
+  backlog_bytes: number;
+  backlog_pkts: number;
+  tins?: CAKETin[];
+  new_flow_count?: number;
+  old_flows_len?: number;
+  new_flows_len?: number;
+  ecn_mark?: number;
+  drop_overlimit?: number;
+};
+export type QoS = {
+  wan_egress?: QdiscStats;
+  wan_ingress?: QdiscStats;
+};
+
 async function fetchEnvelope<T>(path: string): Promise<Envelope<T>> {
   const res = await fetch(path);
   if (!res.ok) throw new Error(`${path} → ${res.status}`);
@@ -135,4 +216,9 @@ export const api = {
     fetchEnvelope<{ queries: QueryLogEntry[] }>(
       "/api/adguard/querylog?" + params.toString(),
     ),
+  firewallRules: () => fetchEnvelope<FirewallRules>("/api/firewall/rules"),
+  firewallCounters: () =>
+    fetchEnvelope<{ chains: FirewallChain[] }>("/api/firewall/counters"),
+  upnp: () => fetchEnvelope<{ leases: UPnPLease[] }>("/api/upnp"),
+  qos: () => fetchEnvelope<QoS>("/api/qos"),
 };

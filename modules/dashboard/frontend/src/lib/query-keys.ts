@@ -13,4 +13,8 @@ export const queryKeys = {
     client?: string;
     domain?: string;
   }) => ["adguard", "querylog", filters] as const,
+  firewallRules: () => ["firewall", "rules"] as const,
+  firewallCounters: () => ["firewall", "counters"] as const,
+  upnp: () => ["upnp"] as const,
+  qos: () => ["qos"] as const,
 };
