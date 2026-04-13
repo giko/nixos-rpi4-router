@@ -30,7 +30,8 @@ in
       wants = [ "network-online.target" "nftables.service" ];
       wantedBy = [ "multi-user.target" ];
       partOf = [ "nftables.service" ];
-      path = [ pkgs.nftables ];
+      restartTriggers = [ config.systemd.services.flow-offload.script ];
+      path = [ pkgs.nftables pkgs.gawk ];
 
       serviceConfig = {
         Type = "oneshot";
@@ -38,8 +39,14 @@ in
       };
 
       script = ''
-        nft add flowtable inet filter f { hook ingress priority 0\; devices = { ${lanIf}, ${wanIf} }\; } 2>/dev/null || true
-        nft add rule inet filter forward position 0 ip protocol { tcp, udp } ct state established flow add @f 2>/dev/null || true
+        # Idempotent rebuild: remove any existing definition, then recreate with current config.
+        # Tolerates both fresh boot (nothing to delete) and upgrade (existing counter-less flowtable).
+        for handle in $(nft -a list chain inet filter forward 2>/dev/null | awk '/^[[:space:]]*ip protocol \{ tcp, udp \} ct state established flow add @f([[:space:]]|$)/ { for (i = 1; i <= NF; i++) if ($i == "handle") print $(i + 1) }'); do
+          nft delete rule inet filter forward handle "$handle" 2>/dev/null || true
+        done
+        nft delete flowtable inet filter f 2>/dev/null || true
+        nft add flowtable inet filter f { hook ingress priority 0\; devices = { ${lanIf}, ${wanIf} }\; counter\; }
+        nft add rule inet filter forward position 0 ip protocol { tcp, udp } ct state established flow add @f comment \"flow-offload-oneshot-owned\"
       '';
     };
 
