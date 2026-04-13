@@ -94,8 +94,14 @@ export function ClientDetail() {
     return <div className="text-sm text-on-surface-variant">Loading...</div>;
   }
 
-  /* Not found */
+  /* Error: distinguish a real 404 ("no such client") from transient
+   * fetch failures (5xx, network drops) so users don't see a misleading
+   * "not found" during backend hiccups. fetchEnvelope throws Error with
+   * "<path> → <status>" — match on 404 in the message. */
   if (clientQ.isError || !clientQ.data) {
+    const msg =
+      clientQ.error instanceof Error ? clientQ.error.message : "";
+    const notFound = msg.includes("404");
     return (
       <div className="space-y-4">
         <Link
@@ -104,7 +110,11 @@ export function ClientDetail() {
         >
           &larr; Back to clients
         </Link>
-        <p className="text-sm text-on-surface-variant">Client not found.</p>
+        <p className="text-sm text-on-surface-variant">
+          {notFound
+            ? "Client not found."
+            : "Failed to load client — retry shortly."}
+        </p>
       </div>
     );
   }
