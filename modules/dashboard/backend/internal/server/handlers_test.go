@@ -379,3 +379,137 @@ func TestAdguardQueryLogCacheSingleflight(t *testing.T) {
 		t.Errorf("expected <=2 upstream hits (singleflight), got %d", hits.Load())
 	}
 }
+
+func TestFirewallRulesHandler(t *testing.T) {
+	st := state.New()
+	st.SetFirewall(model.Firewall{
+		PortForwards:          []model.PortForward{{Protocol: "tcp", ExternalPort: 35978, Destination: "192.168.20.6:32400"}},
+		PBR:                   model.PBR{SourceRules: []model.PBRSourceRule{{Sources: []string{"192.168.1.225"}, Tunnel: "wg_sw"}}},
+		AllowedMACs:           []string{"aa:bb:cc:dd:ee:ff"},
+		BlockedForwardCount1h: 7,
+	})
+	h := New(&config.Config{}, st, &topology.Topology{})
+	req := httptest.NewRequest(http.MethodGet, "/api/firewall/rules", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var env struct {
+		Data struct {
+			PortForwards          []map[string]any `json:"port_forwards"`
+			PBR                   map[string]any   `json:"pbr"`
+			AllowedMACs           []string         `json:"allowed_macs"`
+			BlockedForwardCount1h float64          `json:"blocked_forward_count_1h"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(env.Data.PortForwards) != 1 || env.Data.PortForwards[0]["external_port"].(float64) != 35978 {
+		t.Errorf("port_forwards = %+v", env.Data.PortForwards)
+	}
+	if env.Data.PBR == nil {
+		t.Fatal("pbr missing")
+	}
+	if len(env.Data.AllowedMACs) != 1 || env.Data.AllowedMACs[0] != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("allowed_macs = %+v", env.Data.AllowedMACs)
+	}
+	if env.Data.BlockedForwardCount1h != 7 {
+		t.Errorf("blocked_forward_count_1h = %v, want 7", env.Data.BlockedForwardCount1h)
+	}
+}
+
+func TestFirewallCountersHandler(t *testing.T) {
+	st := state.New()
+	st.SetFirewall(model.Firewall{
+		Chains: []model.FirewallChain{{
+			Family: "inet", Table: "filter", Name: "input", Hook: "input", Policy: "drop",
+			Counters: []model.RuleCounter{{Handle: 16, Packets: 100, Bytes: 4096, Comment: "drop"}},
+		}},
+	})
+	h := New(&config.Config{}, st, &topology.Topology{})
+	req := httptest.NewRequest(http.MethodGet, "/api/firewall/counters", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var env struct {
+		Data struct {
+			Chains []struct {
+				Name     string `json:"name"`
+				Counters []struct {
+					Handle  float64 `json:"handle"`
+					Bytes   float64 `json:"bytes"`
+					Comment string  `json:"comment"`
+				} `json:"counters"`
+			} `json:"chains"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(env.Data.Chains) != 1 || env.Data.Chains[0].Name != "input" {
+		t.Errorf("chains = %+v", env.Data.Chains)
+	}
+	if len(env.Data.Chains[0].Counters) != 1 || env.Data.Chains[0].Counters[0].Bytes != 4096 {
+		t.Errorf("counters = %+v", env.Data.Chains[0].Counters)
+	}
+}
+
+func TestUPnPHandler(t *testing.T) {
+	st := state.New()
+	st.SetFirewall(model.Firewall{
+		UPnPLeases: []model.UPnPLease{{Protocol: "tcp", ExternalPort: 35978, InternalAddr: "192.168.20.6", InternalPort: 32400, Description: "plex"}},
+	})
+	h := New(&config.Config{}, st, &topology.Topology{})
+	req := httptest.NewRequest(http.MethodGet, "/api/upnp", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var env struct {
+		Data struct {
+			Leases []map[string]any `json:"leases"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(env.Data.Leases) != 1 || env.Data.Leases[0]["external_port"].(float64) != 35978 {
+		t.Errorf("leases = %+v", env.Data.Leases)
+	}
+}
+
+func TestQoSHandler(t *testing.T) {
+	st := state.New()
+	eg := model.QdiscStats{Kind: "cake", SentBytes: 1234, BandwidthBps: 100_000_000}
+	st.SetQoS(model.QoS{Egress: &eg})
+	h := New(&config.Config{}, st, &topology.Topology{})
+	req := httptest.NewRequest(http.MethodGet, "/api/qos", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var env struct {
+		Data struct {
+			Egress *struct {
+				Kind      string `json:"kind"`
+				SentBytes int64  `json:"sent_bytes"`
+			} `json:"wan_egress"`
+			Ingress any `json:"wan_ingress"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if env.Data.Egress == nil || env.Data.Egress.Kind != "cake" || env.Data.Egress.SentBytes != 1234 {
+		t.Errorf("egress = %+v", env.Data.Egress)
+	}
+	if env.Data.Ingress != nil {
+		t.Errorf("ingress should be nil when not collected, got %+v", env.Data.Ingress)
+	}
+}

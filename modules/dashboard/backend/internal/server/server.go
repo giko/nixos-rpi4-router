@@ -99,6 +99,11 @@ func New(cfg *config.Config, st *state.State, _ *topology.Topology) http.Handler
 	qlCache := newQueryLogCache(adguard.NewClient(cfg.AdguardURL, nil))
 	mux.HandleFunc("GET /api/adguard/querylog", handleAdguardQueryLog(qlCache))
 
+	mux.HandleFunc("GET /api/firewall/rules", handleFirewallRules(st))
+	mux.HandleFunc("GET /api/firewall/counters", handleFirewallCounters(st))
+	mux.HandleFunc("GET /api/upnp", handleUPnP(st))
+	mux.HandleFunc("GET /api/qos", handleQoS(st))
+
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see
 	// comment above New.
 	mux.HandleFunc("/api", handleAPINotFound)

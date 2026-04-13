@@ -21,6 +21,17 @@ import (
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
 
+// ifbForWAN returns the IFB device name conventionally created by the
+// QoS module for ingress shaping on the given WAN interface. Returns
+// "" when the WAN interface is unset (dev mode), which the QoS
+// collector treats as "skip ingress".
+func ifbForWAN(wan string) string {
+	if wan == "" {
+		return ""
+	}
+	return "ifb4" + wan
+}
+
 func main() {
 	cfg, err := config.FromFlags(os.Args[1:])
 	if err != nil {
@@ -116,6 +127,12 @@ func main() {
 				"cake-qos.service", "chronyd.service", "policy-routing.service",
 			},
 			State: st,
+		}),
+		collector.NewFirewall(collector.FirewallOpts{State: st, Topology: topo}),
+		collector.NewQoS(collector.QoSOpts{
+			State:            st,
+			EgressInterface:  topo.WANInterface,
+			IngressInterface: ifbForWAN(topo.WANInterface),
 		}),
 	}
 
