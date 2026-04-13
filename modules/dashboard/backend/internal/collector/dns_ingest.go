@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
@@ -197,7 +198,7 @@ func normalizeIngest(row rawIngestEntry) (IngestedEntry, bool) {
 		ClientIP: client,
 		Question: row.Question.Name,
 		QType:    row.Question.Type,
-		Blocked:  row.Reason != "" && row.Reason != "NotFiltered",
+		Blocked:  strings.HasPrefix(row.Reason, "Filtered"),
 		Answers:  answers,
 	}, true
 }

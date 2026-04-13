@@ -239,8 +239,61 @@ func TestDnsIngestStopsOnShortPage(t *testing.T) {
 	}
 }
 
+// TestDnsIngestBlockedClassification exhaustively walks AdGuard's
+// Reason taxonomy to pin the Blocked predicate: every reason that
+// actually results in a filter action starts with "Filtered", while
+// NotFiltered* and Rewrite* reasons are allowed passes. FilteredSafeSearch
+// is a rewrite (to the safe-search variant) rather than a hard drop, but
+// the frontend AdGuard page classifies it as blocked via the same
+// startsWith("Filtered") predicate, so the backend mirrors that behavior.
+func TestDnsIngestBlockedClassification(t *testing.T) {
+	now := time.Date(2026, 4, 13, 15, 0, 0, 0, time.UTC)
+	cases := []struct {
+		reason  string
+		blocked bool
+	}{
+		{"NotFiltered", false},
+		{"NotFilteredNotFound", false},
+		{"NotFilteredWhiteList", false},
+		{"ReasonRewrite", false},
+		{"RewriteEtcHosts", false},
+		{"RewriteRule", false},
+		{"FilteredBlackList", true},
+		{"FilteredSafeBrowsing", true},
+		{"FilteredParental", true},
+		{"FilteredBlockedService", true},
+		{"FilteredSafeSearch", true},
+		{"FilteredInvalid", true},
+	}
+	for _, c := range cases {
+		t.Run(c.reason, func(t *testing.T) {
+			row := map[string]interface{}{
+				"time":     now.Format(time.RFC3339Nano),
+				"client":   "192.168.1.42",
+				"question": map[string]interface{}{"name": "example.com", "type": "A"},
+				"answer":   []map[string]interface{}{},
+				"reason":   c.reason,
+			}
+			raw, _ := json.Marshal([]interface{}{row})
+			fake := &fakeAdguardClient{responses: []adguard.QueryLogResponse{{Data: raw, Oldest: ""}}}
+			var got bool
+			col := NewDnsIngest(DnsIngestOpts{
+				Adguard: fake,
+				OnEntry: func(e IngestedEntry) { got = e.Blocked },
+			})
+			if err := col.Tick(context.Background(), now); err != nil {
+				t.Fatalf("Tick: %v", err)
+			}
+			if got != c.blocked {
+				t.Errorf("reason=%s got Blocked=%v, want %v", c.reason, got, c.blocked)
+			}
+		})
+	}
+}
+
 // TestDnsIngestMarksBlocked asserts the Blocked flag follows AdGuard's
-// Reason field: anything non-empty and not "NotFiltered" is blocked.
+// Reason field: anything prefixed with "Filtered" is blocked; everything
+// else (including empty and NotFiltered) is allowed.
 func TestDnsIngestMarksBlocked(t *testing.T) {
 	body := []byte(`[
 		{"time":"2026-04-13T14:00:02Z","client":"192.168.1.1","question":{"name":"ok.example","type":"A"},"answer":[],"reason":"NotFiltered"},
