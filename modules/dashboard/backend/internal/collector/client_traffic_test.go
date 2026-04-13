@@ -1,0 +1,83 @@
+package collector
+
+import (
+	"net/netip"
+	"testing"
+	"time"
+
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
+)
+
+func TestTrafficFirstTickSeedsThenDeltas(t *testing.T) {
+	client := netip.MustParseAddr("192.168.1.42")
+	key := conntrack.FlowKey{Proto: 6, OrigSrcIP: client,
+		OrigDstIP: netip.MustParseAddr("1.2.3.4"), OrigSrcPort: 47182, OrigDstPort: 443}
+	c := NewClientTraffic(ClientTrafficOpts{TickDur: 10 * time.Second})
+	c.Track(client)
+	c.Apply(time.Unix(0, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirOutbound, OrigBytes: 1_000_000, ReplyBytes: 10_000_000}})
+	samples, _, ok := c.Snapshot(client)
+	if !ok {
+		t.Fatal("client should be tracked")
+	}
+	if len(samples) != 0 {
+		t.Fatalf("first tick should emit no sample, got %d", len(samples))
+	}
+	c.Apply(time.Unix(10, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirOutbound, OrigBytes: 1_100_000, ReplyBytes: 12_000_000}})
+	samples, _, _ = c.Snapshot(client)
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].TxBps != 80_000 {
+		t.Errorf("tx_bps = %d, want 80000", samples[0].TxBps)
+	}
+	if samples[0].RxBps != 1_600_000 {
+		t.Errorf("rx_bps = %d, want 1600000", samples[0].RxBps)
+	}
+}
+
+func TestTrafficInterleavedFlowChurn(t *testing.T) {
+	client := netip.MustParseAddr("192.168.1.42")
+	keyA := conntrack.FlowKey{Proto: 6, OrigSrcIP: client,
+		OrigDstIP: netip.MustParseAddr("1.2.3.4"), OrigSrcPort: 100, OrigDstPort: 443}
+	keyB := conntrack.FlowKey{Proto: 6, OrigSrcIP: client,
+		OrigDstIP: netip.MustParseAddr("5.6.7.8"), OrigSrcPort: 200, OrigDstPort: 443}
+	c := NewClientTraffic(ClientTrafficOpts{TickDur: 10 * time.Second})
+	c.Track(client)
+	c.Apply(time.Unix(0, 0), []conntrack.FlowBytes{
+		{Key: keyA, ClientIP: client, Direction: conntrack.DirOutbound, OrigBytes: 50_000_000}})
+	c.Apply(time.Unix(10, 0), []conntrack.FlowBytes{
+		{Key: keyB, ClientIP: client, Direction: conntrack.DirOutbound, OrigBytes: 200_000_000}})
+	samples, _, _ := c.Snapshot(client)
+	if len(samples) != 1 {
+		t.Fatalf("samples = %d, want 1", len(samples))
+	}
+	if samples[0].TxBps != 0 {
+		t.Errorf("tx = %d, want 0 (flow churn must not double-count)", samples[0].TxBps)
+	}
+}
+
+func TestTrafficInboundAttributesRxCorrectly(t *testing.T) {
+	client := netip.MustParseAddr("192.168.1.50")
+	key := conntrack.FlowKey{Proto: 6,
+		OrigSrcIP: netip.MustParseAddr("203.0.113.9"),
+		OrigDstIP: netip.MustParseAddr("198.51.100.4"),
+		OrigSrcPort: 55102, OrigDstPort: 32400}
+	c := NewClientTraffic(ClientTrafficOpts{TickDur: 10 * time.Second})
+	c.Track(client)
+	c.Apply(time.Unix(0, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirInbound, OrigBytes: 1_000_000, ReplyBytes: 100_000}})
+	c.Apply(time.Unix(10, 0), []conntrack.FlowBytes{{Key: key, ClientIP: client,
+		Direction: conntrack.DirInbound, OrigBytes: 4_000_000, ReplyBytes: 300_000}})
+	samples, _, _ := c.Snapshot(client)
+	if len(samples) != 1 {
+		t.Fatalf("want 1 sample")
+	}
+	if samples[0].RxBps != 2_400_000 {
+		t.Errorf("rx = %d, want 2400000 (3MB orig is client RX on inbound)", samples[0].RxBps)
+	}
+	if samples[0].TxBps != 160_000 {
+		t.Errorf("tx = %d, want 160000 (200KB reply is client TX on inbound)", samples[0].TxBps)
+	}
+}
