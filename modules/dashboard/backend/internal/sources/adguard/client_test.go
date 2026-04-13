@@ -160,7 +160,7 @@ func TestFetchQueryLogPagePassesOlderThan(t *testing.T) {
 		t.Fatalf("FetchQueryLogPage: %v", err)
 	}
 
-	if !strings.Contains(gotQuery, "older_than=2026-04-13T14%3A00%3A00Z") {
+	if !strings.Contains(gotQuery, "older_than=2026-04-13T14%3A00%3A00.000000000Z") {
 		t.Errorf("query = %q, want older_than param", gotQuery)
 	}
 	if !strings.Contains(gotQuery, "limit=500") {
