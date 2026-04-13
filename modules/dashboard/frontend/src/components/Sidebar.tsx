@@ -8,6 +8,7 @@ import {
   Shield,
   Activity,
   Flame,
+  Gauge,
   Cpu,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -22,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/adguard", label: "AdGuard DNS", icon: Shield },
   { to: "/traffic", label: "Traffic", icon: Activity },
   { to: "/firewall", label: "Firewall & PBR", icon: Flame },
+  { to: "/qos", label: "QoS", icon: Gauge },
   { to: "/system", label: "System", icon: Cpu },
 ];
 
