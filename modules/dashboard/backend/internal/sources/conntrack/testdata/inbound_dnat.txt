@@ -1,0 +1,1 @@
+ipv4     2 tcp      6 431999 ESTABLISHED src=203.0.113.9 dst=198.51.100.4 sport=55102 dport=32400 packets=99 bytes=1100000 src=192.168.1.50 dst=203.0.113.9 sport=32400 dport=55102 packets=140 bytes=82000 [ASSURED] mark=65536 use=1

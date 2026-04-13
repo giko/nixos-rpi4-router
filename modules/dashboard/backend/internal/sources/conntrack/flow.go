@@ -66,14 +66,43 @@ type FlowBytes struct {
 // sequentially based on the sorted list of configured tunnel names, so
 // hardcoding a static table here would silently mislabel flows on any
 // deployment with a different tunnel set.
+//
+// LANPrefixes lists the subnets that should be considered "our LAN" when
+// attributing flow direction. Callers should pass the router's actual
+// client subnets (e.g. 192.168.1.0/24, 192.168.20.0/24) so that router
+// sessions terminating on an RFC1918 / CGNAT WAN address are correctly
+// skipped instead of being misclassified as inbound DNAT, and so that
+// private-space peers on the far side of a site-to-site VPN aren't
+// mistaken for local clients. When LANPrefixes is empty, parseLine falls
+// back to netip.Addr.IsPrivate() — this is retained for legacy callers
+// and tests that don't need precise LAN membership.
 type EnumerateOpts struct {
-	RouteTags map[uint32]string
+	RouteTags   map[uint32]string
+	LANPrefixes []netip.Prefix
+}
+
+// isLAN returns true if ip falls within any of the supplied prefixes.
+// When prefixes is empty, falls back to ip.IsPrivate() — useful for tests
+// that don't care about precise LAN membership but require the pre-Task-1.3
+// private-space heuristic.
+func isLAN(ip netip.Addr, prefixes []netip.Prefix) bool {
+	if len(prefixes) == 0 {
+		return ip.IsPrivate()
+	}
+	for _, p := range prefixes {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // EnumerateFlows parses /proc/net/nf_conntrack format (one line per flow)
 // and returns per-flow records. Caller supplies a reader so tests can
-// inject fixtures. Returns flows whose original-source is a private
-// LAN IP (192.168.0.0/16, 10.0.0.0/8, 172.16/12).
+// inject fixtures. Returns flows whose original source, or reply source
+// (for inbound DNAT), falls within opts.LANPrefixes. When LANPrefixes is
+// empty the check falls back to netip.Addr.IsPrivate() — see EnumerateOpts
+// for the reasoning behind requiring explicit prefixes in production.
 func EnumerateFlows(r io.Reader, opts EnumerateOpts) ([]FlowBytes, error) {
 	var out []FlowBytes
 	scan := bufio.NewScanner(r)
@@ -126,6 +155,17 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 	fb.Key.Proto = uint8(protoNum)
 	fb.State = state
 
+	// Reply-direction tuple fields (second occurrence of src/dst/sport/dport)
+	// are captured so we can attribute inbound DNAT flows: when the original
+	// source is a public peer but the reply source is a LAN host (meaning
+	// traffic was DNAT'd into the LAN), the reply tuple is the only place
+	// where the LAN endpoint appears.
+	var (
+		replySrc   netip.Addr
+		replyDst   netip.Addr
+		replySport uint16
+		replyDport uint16
+	)
 	var (
 		srcCount   int
 		dstCount   int
@@ -146,12 +186,9 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 			}
 			if srcCount == 0 {
 				fb.Key.OrigSrcIP = ip
+			} else if srcCount == 1 {
+				replySrc = ip
 			}
-			// Reply-direction src (second occurrence) is unused: the
-			// original tuple already carries the information we need for
-			// LAN attribution, and the reply src in an un-NAT'd flow is
-			// identical to the original dst. We still count it so the
-			// tuple-boundary tracking stays correct.
 			srcCount++
 		case "dst":
 			ip, err := netip.ParseAddr(kv[1])
@@ -160,18 +197,24 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 			}
 			if dstCount == 0 {
 				fb.Key.OrigDstIP = ip
+			} else if dstCount == 1 {
+				replyDst = ip
 			}
 			dstCount++
 		case "sport":
 			p, _ := strconv.Atoi(kv[1])
 			if sportCount == 0 {
 				fb.Key.OrigSrcPort = uint16(p)
+			} else if sportCount == 1 {
+				replySport = uint16(p)
 			}
 			sportCount++
 		case "dport":
 			p, _ := strconv.Atoi(kv[1])
 			if dportCount == 0 {
 				fb.Key.OrigDstPort = uint16(p)
+			} else if dportCount == 1 {
+				replyDport = uint16(p)
 			}
 			dportCount++
 		case "bytes":
@@ -190,14 +233,48 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 		}
 	}
 
-	if !fb.Key.OrigSrcIP.IsPrivate() {
+	// replyDst and replyDport are captured for completeness (they carry the
+	// pre-NAT / post-NAT peer endpoint depending on direction) but the
+	// attribution block below doesn't need them yet: outbound flows derive
+	// the remote endpoint from the original destination and inbound DNAT
+	// flows derive it from the original source.
+	_ = replyDst
+	_ = replyDport
+
+	switch {
+	case isLAN(fb.Key.OrigSrcIP, opts.LANPrefixes):
+		// Outbound: client is orig src.
+		fb.Direction = DirOutbound
+		fb.ClientIP = fb.Key.OrigSrcIP
+		fb.LocalPort = fb.Key.OrigSrcPort
+		fb.RemoteIP = fb.Key.OrigDstIP
+		fb.RemotePort = fb.Key.OrigDstPort
+		fb.NATPublicIP = netip.Addr{}
+		fb.NATPublicPort = 0
+	case replySrc.IsValid() && isLAN(replySrc, opts.LANPrefixes) &&
+		!isLAN(fb.Key.OrigSrcIP, opts.LANPrefixes) &&
+		!isLAN(fb.Key.OrigDstIP, opts.LANPrefixes):
+		// Inbound DNAT: client is reply src. The original destination is
+		// the public (pre-DNAT) address the peer contacted; the original
+		// source is the remote peer. We also require that orig src is NOT
+		// a LAN host — otherwise LAN→LAN traffic between two local subnets
+		// would be double-classified. Finally, we require that orig dst is
+		// NOT a LAN host: if the original packet was already addressed to a
+		// LAN host (e.g. a site-to-site VPN peer reaching a LAN host
+		// directly), no DNAT rewrite happened — this is a routed session,
+		// not a port forward, and should not be labelled with NAT metadata.
+		fb.Direction = DirInbound
+		fb.ClientIP = replySrc
+		fb.LocalPort = replySport
+		fb.RemoteIP = fb.Key.OrigSrcIP
+		fb.RemotePort = fb.Key.OrigSrcPort
+		fb.NATPublicIP = fb.Key.OrigDstIP
+		fb.NATPublicPort = fb.Key.OrigDstPort
+	default:
+		// Neither side is LAN — not our flow (e.g. router-originated on a
+		// double-NAT WAN, site-to-site with private peers, or plain
+		// transit).
 		return FlowBytes{}, false, nil
 	}
-	fb.Direction = DirOutbound
-	fb.ClientIP = fb.Key.OrigSrcIP
-	fb.LocalPort = fb.Key.OrigSrcPort
-	fb.RemoteIP = fb.Key.OrigDstIP
-	fb.RemotePort = fb.Key.OrigDstPort
-	fb.NATPublicIP = netip.Addr{}
 	return fb, true, nil
 }
