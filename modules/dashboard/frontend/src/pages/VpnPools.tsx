@@ -78,10 +78,13 @@ export function VpnPools() {
     refetchInterval: 5_000,
   });
 
-  // Error first, loading second — React Query leaves data undefined and
-  // sets isError=true on cold-fetch failure. A !data check first would
-  // hang forever on "Loading...".
-  if (poolsQ.isError || clientsQ.isError) {
+  // Cold-failure guard: only show the full error banner when neither
+  // envelope is available yet. Once data has been cached, a transient
+  // refetch failure should leave the UI in place (with a small inline
+  // warning) instead of erasing it. React Query preserves `data` on
+  // failed REFETCHES after an initial success.
+  const noData = !poolsQ.data || !clientsQ.data;
+  if ((poolsQ.isError || clientsQ.isError) && noData) {
     return (
       <div className="text-sm text-rose font-mono">
         Failed to load pool data — retry shortly.
@@ -94,6 +97,7 @@ export function VpnPools() {
 
   const pools = poolsQ.data?.data.pools ?? [];
   const clients = clientsQ.data?.data.clients ?? [];
+  const refetchFailed = poolsQ.isError || clientsQ.isError;
   // The page derives counts from BOTH envelopes, so the freshness badge
   // must reflect whichever is staler (and the older updated_at). A fresh
   // `/api/pools` can otherwise mask stale client data.
@@ -112,7 +116,14 @@ export function VpnPools() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">VPN Pools</h1>
-        <StaleIndicator stale={combinedStale} updatedAt={combinedUpdatedAt} />
+        <div className="flex items-center gap-3">
+          {refetchFailed && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose">
+              Refetch failed
+            </span>
+          )}
+          <StaleIndicator stale={combinedStale} updatedAt={combinedUpdatedAt} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
