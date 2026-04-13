@@ -21,7 +21,8 @@ type SystemOpts struct {
 }
 
 // System reads /proc/stat, /proc/meminfo, thermal zone, and /proc/uptime,
-// computes CPU percentages from deltas, and publishes via State.SetSystem.
+// computes CPU percentages from deltas, and publishes via
+// State.SetSystemHot so it never touches the medium-tier fields.
 type System struct {
 	opts    SystemOpts
 	lastCPU *proc.CPUTimes
@@ -80,27 +81,20 @@ func (s *System) Run(_ context.Context) error {
 		pctUsed = float64(usedBytes) / float64(mem.TotalBytes) * 100
 	}
 
-	// Preserve medium-tier fields (Services, Throttled) from existing state.
-	existing, _ := s.opts.State.SnapshotSystem()
-
-	sys := model.SystemStats{
-		CPU: cpu,
-		Memory: model.MemoryStats{
+	// Write only hot-tier fields under the state lock so a concurrent
+	// medium-tier update can't be clobbered by a stale snapshot.
+	s.opts.State.SetSystemHot(
+		cpu,
+		model.MemoryStats{
 			TotalBytes:     mem.TotalBytes,
 			AvailableBytes: mem.AvailableBytes,
 			UsedBytes:      usedBytes,
 			PercentUsed:    pctUsed,
 		},
-		TemperatureC:  temp,
-		UptimeSeconds: uptime,
-		BootTime:      time.Unix(int64(stat.BootTimeUnix), 0).UTC(),
-		// Preserve medium-tier fields.
-		Throttled:     existing.Throttled,
-		ThrottledFlag: existing.ThrottledFlag,
-		Services:      existing.Services,
-	}
-
-	s.opts.State.SetSystem(sys)
+		temp,
+		uptime,
+		time.Unix(int64(stat.BootTimeUnix), 0).UTC(),
+	)
 	return nil
 }
 
@@ -126,36 +120,32 @@ func NewSystemMedium(opts SystemMediumOpts) *SystemMedium {
 func (*SystemMedium) Name() string { return "system-medium" }
 func (*SystemMedium) Tier() Tier   { return Medium }
 
-// Run performs a single collection pass. It loads the current system state,
-// updates only the medium-tier fields, and writes the merged result back.
+// Run performs a single collection pass. It collects medium-tier fields
+// (services, throttle) and writes them via SetSystemMedium, which updates
+// only those fields under the state mutex so hot-tier fields stay intact.
 func (m *SystemMedium) Run(ctx context.Context) error {
-	var (
-		services []model.ServiceState
-		svcErr   error
-		throttle string
-		tFlag    bool
-		tErr     error
-	)
+	services, svcErr := systemd.Collect(ctx, m.opts.Units)
+	throttle, tFlag, tErr := vcgencmd.Collect(ctx)
 
-	services, svcErr = systemd.Collect(ctx, m.opts.Units)
-	throttle, tFlag, tErr = vcgencmd.Collect(ctx)
-
-	// If both sources failed, return first error.
+	// If both sources failed, return first error. Nothing is written to
+	// state so the existing medium values (and their updated_at) keep
+	// surfacing staleness to the handler.
 	if svcErr != nil && tErr != nil {
 		return svcErr
 	}
 
-	// Snapshot existing state to preserve hot-tier fields.
-	existing, _ := m.opts.State.SnapshotSystem()
-
-	if svcErr == nil {
-		existing.Services = services
+	// Pull the previous medium-tier fields so partial failures preserve
+	// whichever half we couldn't refresh this tick. We read under the
+	// state mutex via SnapshotSystem; only the medium fields are used.
+	prev, _ := m.opts.State.SnapshotSystem()
+	if svcErr != nil {
+		services = prev.Services
 	}
-	if tErr == nil {
-		existing.Throttled = throttle
-		existing.ThrottledFlag = tFlag
+	if tErr != nil {
+		throttle = prev.Throttled
+		tFlag = prev.ThrottledFlag
 	}
 
-	m.opts.State.SetSystem(existing)
+	m.opts.State.SetSystemMedium(services, throttle, tFlag)
 	return nil
 }
