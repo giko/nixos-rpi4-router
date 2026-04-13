@@ -178,11 +178,69 @@ func (s *State) SnapshotTunnels() ([]model.Tunnel, time.Time) {
 
 // --- Pools ---
 
-// SetPools replaces the cached pool list with a defensive copy.
+// SetPools replaces the cached pool list with a defensive copy. Retained
+// for tests and seed writes; production collectors should use
+// SetPoolsHot / SetPoolFlows so hot topology updates don't clobber fresh
+// cold-tier flow counts and vice versa.
 func (s *State) SetPools(v []model.Pool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.pools = copyPools(v)
+	s.poolsUpdated = time.Now()
+}
+
+// SetPoolsHot writes only topology-derived pool fields (Name, Members'
+// Tunnel/Fwmark/Healthy, ClientIPs, FailsafeDropActive) and preserves the
+// cold-tier FlowCount already held in state. Incoming members without a
+// match in the previous state get FlowCount=0.
+func (s *State) SetPoolsHot(v []model.Pool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Index existing flow counts by pool name → tunnel name so we can
+	// preserve them across the in-place merge.
+	prevFlows := make(map[string]map[string]int, len(s.pools))
+	for _, p := range s.pools {
+		m := make(map[string]int, len(p.Members))
+		for _, mem := range p.Members {
+			m[mem.Tunnel] = mem.FlowCount
+		}
+		prevFlows[p.Name] = m
+	}
+
+	merged := copyPools(v)
+	for i := range merged {
+		if prev, ok := prevFlows[merged[i].Name]; ok {
+			for j := range merged[i].Members {
+				if fc, ok := prev[merged[i].Members[j].Tunnel]; ok {
+					merged[i].Members[j].FlowCount = fc
+				}
+			}
+		}
+	}
+	s.pools = merged
+	s.poolsUpdated = time.Now()
+}
+
+// SetPoolFlows updates only the per-member FlowCount values. counts is
+// keyed by pool name → tunnel name → flow count. Any pool or member not
+// present in counts keeps its previous FlowCount; any count referring to
+// an unknown pool/member is silently ignored (the hot-tier collector is
+// the source of truth for pool membership).
+func (s *State) SetPoolFlows(counts map[string]map[string]int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.pools {
+		per, ok := counts[s.pools[i].Name]
+		if !ok {
+			continue
+		}
+		for j := range s.pools[i].Members {
+			if fc, ok := per[s.pools[i].Members[j].Tunnel]; ok {
+				s.pools[i].Members[j].FlowCount = fc
+			}
+		}
+	}
 	s.poolsUpdated = time.Now()
 }
 

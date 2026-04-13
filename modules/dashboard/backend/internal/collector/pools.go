@@ -19,8 +19,9 @@ type PoolsOpts struct {
 }
 
 // Pools derives pool state from the topology and pool-health file.
-// FlowCount is preserved from previous state (populated by cold-tier
-// collector) but never overwritten here.
+// FlowCount is preserved across updates because the hot pass writes via
+// SetPoolsHot, which merges new topology/health data with existing
+// cold-tier flow counts under the state mutex.
 type Pools struct {
 	opts PoolsOpts
 }
@@ -48,17 +49,6 @@ func (c *Pools) Run(_ context.Context) error {
 		fwmarks[tt.Name] = tt.Fwmark
 	}
 
-	// Snapshot existing pools to preserve per-member FlowCount from cold tier.
-	prev, _ := c.opts.State.SnapshotPools()
-	prevFlows := make(map[string]map[string]int, len(prev))
-	for _, p := range prev {
-		m := make(map[string]int, len(p.Members))
-		for _, mem := range p.Members {
-			m[mem.Tunnel] = mem.FlowCount
-		}
-		prevFlows[p.Name] = m
-	}
-
 	pools := make([]model.Pool, 0, len(c.opts.Topology.Pools))
 	for _, tp := range c.opts.Topology.Pools {
 		members := make([]model.PoolMember, 0, len(tp.Members))
@@ -73,18 +63,13 @@ func (c *Pools) Run(_ context.Context) error {
 				allUnhealthy = false
 			}
 
-			mem := model.PoolMember{
+			// FlowCount deliberately left zero here — SetPoolsHot merges
+			// the previous cold-tier counts under the state mutex.
+			members = append(members, model.PoolMember{
 				Tunnel:  name,
 				Fwmark:  fwmarks[name],
 				Healthy: healthy,
-			}
-
-			// Preserve flow count from previous snapshot.
-			if flows, ok := prevFlows[tp.Name]; ok {
-				mem.FlowCount = flows[name]
-			}
-
-			members = append(members, mem)
+			})
 		}
 
 		// failsafe_drop_active when ALL members are unhealthy.
@@ -101,7 +86,7 @@ func (c *Pools) Run(_ context.Context) error {
 		})
 	}
 
-	c.opts.State.SetPools(pools)
+	c.opts.State.SetPoolsHot(pools)
 	return nil
 }
 
@@ -151,16 +136,24 @@ func (c *PoolFlows) Run(ctx context.Context) error {
 		counts[tt.Name] = n
 	}
 
-	// Merge flow counts into existing pool state.
+	// Build per-pool flow maps keyed by tunnel name. A hot-tier snapshot
+	// is only needed to discover which pools reference which tunnels; the
+	// actual write happens under the state mutex via SetPoolFlows so a
+	// concurrent hot-tier write can't race with our update.
 	pools, _ := c.opts.State.SnapshotPools()
-	for i := range pools {
-		for j := range pools[i].Members {
-			if n, ok := counts[pools[i].Members[j].Tunnel]; ok {
-				pools[i].Members[j].FlowCount = n
+	perPool := make(map[string]map[string]int, len(pools))
+	for _, p := range pools {
+		m := make(map[string]int, len(p.Members))
+		for _, mem := range p.Members {
+			if n, ok := counts[mem.Tunnel]; ok {
+				m[mem.Tunnel] = n
 			}
+		}
+		if len(m) > 0 {
+			perPool[p.Name] = m
 		}
 	}
 
-	c.opts.State.SetPools(pools)
+	c.opts.State.SetPoolFlows(perPool)
 	return nil
 }
