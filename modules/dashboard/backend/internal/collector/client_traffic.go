@@ -51,7 +51,7 @@ type ClientTraffic struct {
 	baseline map[conntrack.FlowKey]flowSnap
 	rings    map[netip.Addr]*trafficRing
 	tracked  map[netip.Addr]struct{}
-	seeded   bool
+	seeded   map[netip.Addr]bool // per-client
 }
 
 func NewClientTraffic(opts ClientTrafficOpts) *ClientTraffic {
@@ -66,6 +66,7 @@ func NewClientTraffic(opts ClientTrafficOpts) *ClientTraffic {
 		baseline: make(map[conntrack.FlowKey]flowSnap),
 		rings:    make(map[netip.Addr]*trafficRing),
 		tracked:  make(map[netip.Addr]struct{}),
+		seeded:   make(map[netip.Addr]bool),
 	}
 }
 
@@ -83,12 +84,12 @@ func (c *ClientTraffic) Drop(ip netip.Addr) {
 	defer c.mu.Unlock()
 	delete(c.tracked, ip)
 	delete(c.rings, ip)
+	delete(c.seeded, ip)
 	for k, v := range c.baseline {
 		if v.clientIP == ip {
 			delete(c.baseline, k)
 		}
 	}
-	c.seeded = false
 }
 
 func (c *ClientTraffic) Apply(now time.Time, snapshot []conntrack.FlowBytes) {
@@ -126,16 +127,15 @@ func (c *ClientTraffic) Apply(now time.Time, snapshot []conntrack.FlowBytes) {
 	}
 	c.baseline = next
 
-	if !c.seeded {
-		c.seeded = true
-		return
-	}
-
 	secs := uint64(c.opts.TickDur / time.Second)
 	if secs == 0 {
 		secs = 1
 	}
 	for ip := range c.tracked {
+		if !c.seeded[ip] {
+			c.seeded[ip] = true
+			continue // skip the first tick for this client
+		}
 		r := c.rings[ip]
 		rx := rxDelta[ip] * 8 / secs
 		tx := txDelta[ip] * 8 / secs
