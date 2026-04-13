@@ -38,23 +38,47 @@ func (*QoS) Tier() Tier   { return Medium }
 
 func (c *QoS) Run(ctx context.Context) error {
 	out := model.QoS{}
+	var (
+		egressErr, ingressErr error
+		anySuccess            bool
+	)
 	if c.opts.EgressInterface != "" {
 		eg, err := tc.CollectCAKE(ctx, c.opts.Run, c.opts.EgressInterface)
 		if err != nil {
 			slog.Warn("qos: egress collect failed", "iface", c.opts.EgressInterface, "err", err)
+			egressErr = err
 		} else {
 			eq := toModel(eg)
 			out.Egress = &eq
+			anySuccess = true
 		}
 	}
 	if c.opts.IngressInterface != "" {
 		ig, err := tc.CollectHTB(ctx, c.opts.Run, c.opts.IngressInterface)
 		if err != nil {
 			slog.Warn("qos: ingress collect failed", "iface", c.opts.IngressInterface, "err", err)
+			ingressErr = err
 		} else {
 			iq := toModel(ig)
 			out.Ingress = &iq
+			anySuccess = true
 		}
+	}
+	// If at least one side delivered a snapshot, publish — the other
+	// side staying nil correctly signals "this tick failed for that
+	// half" without dropping good data. If both sides failed (or both
+	// interfaces were empty strings), DO NOT publish — keep the
+	// previous snapshot so IsStale can surface the outage instead of
+	// us replacing it with a fresh-but-empty QoS{}.
+	if !anySuccess {
+		if egressErr != nil {
+			return egressErr
+		}
+		if ingressErr != nil {
+			return ingressErr
+		}
+		// Both interfaces unset (dev-mode): nothing to do.
+		return nil
 	}
 	c.opts.State.SetQoS(out)
 	return nil

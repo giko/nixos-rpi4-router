@@ -2,8 +2,10 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 )
 
@@ -39,5 +41,25 @@ func TestQoSCollectorPopulatesState(t *testing.T) {
 	}
 	if c.Tier() != Medium {
 		t.Errorf("Tier = %v, want Medium", c.Tier())
+	}
+}
+
+func TestQoSCollectorPreservesPreviousOnTotalFailure(t *testing.T) {
+	st := state.New()
+	// Seed a known-good QoS snapshot first.
+	good := model.QoS{Egress: &model.QdiscStats{Kind: "cake", SentBytes: 500}}
+	st.SetQoS(good)
+
+	failingRun := func(_ context.Context, _ ...string) ([]byte, error) {
+		return nil, fmt.Errorf("tc unavailable")
+	}
+	c := NewQoS(QoSOpts{State: st, Run: failingRun, EgressInterface: "eth1", IngressInterface: "ifb4eth1"})
+
+	if err := c.Run(context.Background()); err == nil {
+		t.Error("Run should error when both sides fail")
+	}
+	got, _ := st.SnapshotQoS()
+	if got.Egress == nil || got.Egress.SentBytes != 500 {
+		t.Errorf("previous good snapshot should be preserved, got Egress=%+v", got.Egress)
 	}
 }
