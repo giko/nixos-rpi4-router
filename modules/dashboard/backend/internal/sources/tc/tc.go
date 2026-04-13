@@ -89,27 +89,60 @@ func CollectHTB(ctx context.Context, run Runner, iface string) (QdiscStats, erro
 }
 
 // ParseCAKE walks the text output and pulls counters + per-tin stats.
+// Only the section belonging to the `qdisc cake` block is consumed —
+// some interfaces (notably eth1 here, which doubles as the IFB
+// redirect source) report a sibling `qdisc ingress` block whose
+// counters would otherwise overwrite CAKE's.
 func ParseCAKE(raw string) (QdiscStats, error) {
 	q := QdiscStats{Kind: "cake"}
-	lines := splitLines(raw)
-	for i := 0; i < len(lines); i++ {
-		ln := strings.TrimSpace(lines[i])
-		if strings.HasPrefix(ln, "qdisc cake") {
-			q.BandwidthBps = parseBandwidth(ln)
+	all := splitLines(raw)
+	cakeLines := sliceCakeBlock(all)
+	if len(cakeLines) == 0 {
+		return QdiscStats{}, fmt.Errorf("tc: no `qdisc cake` block found in CAKE output")
+	}
+	for _, ln := range cakeLines {
+		t := strings.TrimSpace(ln)
+		if strings.HasPrefix(t, "qdisc cake") {
+			q.BandwidthBps = parseBandwidth(t)
 			continue
 		}
-		if strings.HasPrefix(ln, "Sent ") {
-			q.SentBytes, q.SentPackets, q.Dropped, q.Overlimits, q.Requeues = parseSentLine(ln)
+		if strings.HasPrefix(t, "Sent ") {
+			q.SentBytes, q.SentPackets, q.Dropped, q.Overlimits, q.Requeues = parseSentLine(t)
 		}
-		if strings.HasPrefix(ln, "backlog ") {
-			q.BacklogBytes, q.BacklogPkts = parseBacklogLine(ln)
+		if strings.HasPrefix(t, "backlog ") {
+			q.BacklogBytes, q.BacklogPkts = parseBacklogLine(t)
 		}
 	}
-	q.Tins = parseCakeTins(lines)
+	q.Tins = parseCakeTins(cakeLines)
 	if q.SentBytes == 0 && q.SentPackets == 0 {
-		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in CAKE output")
+		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in CAKE block")
 	}
 	return q, nil
+}
+
+// sliceCakeBlock returns the contiguous lines from the first
+// `qdisc cake` line up to (but not including) the next line whose
+// trimmed prefix is `qdisc ` — i.e. the next sibling qdisc. Returns
+// the empty slice if no `qdisc cake` is present.
+func sliceCakeBlock(lines []string) []string {
+	start := -1
+	for i, ln := range lines {
+		if strings.HasPrefix(strings.TrimSpace(ln), "qdisc cake") {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		return nil
+	}
+	end := len(lines)
+	for j := start + 1; j < len(lines); j++ {
+		if strings.HasPrefix(strings.TrimSpace(lines[j]), "qdisc ") {
+			end = j
+			break
+		}
+	}
+	return lines[start:end]
 }
 
 // ParseHTB extracts HTB outer + fq_codel inner counters.

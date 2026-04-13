@@ -23,8 +23,15 @@ func TestParseCakeFromFixture(t *testing.T) {
 	if q.SentPackets <= 0 {
 		t.Errorf("SentPackets = %d, want > 0", q.SentPackets)
 	}
-	if q.BandwidthBps == 0 {
-		t.Errorf("BandwidthBps = 0; expected populated from `bandwidth 100Mbit`")
+	// The cake fixture also contains a sibling `qdisc ingress` whose
+	// Sent counters are much higher (it sees all packets the IFB
+	// redirected). If our SentBytes lands above 100 GB we know we
+	// accidentally consumed the ingress block too.
+	if q.SentBytes >= 100_000_000_000 {
+		t.Errorf("SentBytes = %d; looks like ingress block leaked into CAKE parse (cake root should be ~42 GB)", q.SentBytes)
+	}
+	if q.BandwidthBps != 100_000_000 {
+		t.Errorf("BandwidthBps = %d, want 100000000 (100 Mbit from fixture)", q.BandwidthBps)
 	}
 	if len(q.Tins) != 3 {
 		t.Errorf("Tin count = %d, want 3 (Bulk/Best Effort/Voice)", len(q.Tins))
