@@ -167,3 +167,50 @@ func TestParseHTBMissingFqCodelLeaf(t *testing.T) {
 		t.Fatal("ParseHTB on htb-without-fq_codel input should error")
 	}
 }
+
+func TestParseHTBHealthyWithIdenticalSentLines(t *testing.T) {
+	// Healthy ingress with no rate-limiting — htb outer and fq_codel
+	// leaf legitimately report identical Sent text. Leaf presence must
+	// be detected from the qdisc structure, not the Sent string.
+	raw := `qdisc htb 1: root refcnt 2 r2q 10 default 0x1
+ Sent 100 bytes 1 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+qdisc fq_codel 8004: parent 1:1 limit 10240p flows 1024
+ Sent 100 bytes 1 pkt (dropped 0, overlimits 0 requeues 0)
+ backlog 0b 0p requeues 0
+  maxpacket 0 drop_overlimit 0 new_flow_count 1 ecn_mark 0
+  new_flows_len 0 old_flows_len 0
+`
+	q, err := ParseHTB(raw)
+	if err != nil {
+		t.Fatalf("ParseHTB on healthy identical-Sent output errored: %v", err)
+	}
+	if q.SentBytes != 100 || q.SentPackets != 1 {
+		t.Errorf("Sent totals = %d/%d, want 100/1", q.SentBytes, q.SentPackets)
+	}
+	if q.NewFlowCount != 1 {
+		t.Errorf("NewFlowCount = %d, want 1 (proves we read the leaf, not just the outer)", q.NewFlowCount)
+	}
+}
+
+func TestParseBacklogScaledUnits(t *testing.T) {
+	cases := []struct {
+		name        string
+		line        string
+		wantBytes   int64
+		wantPackets int64
+	}{
+		{"raw bytes", "backlog 1500b 1p requeues 0", 1500, 1},
+		{"kibibytes", "backlog 12Kb 8p requeues 0", 12 * 1024, 8},
+		{"mebibytes", "backlog 3Mb 2000p requeues 0", 3 * 1024 * 1024, 2000},
+		{"zero", "backlog 0b 0p requeues 0", 0, 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b, p := parseBacklogLine(c.line)
+			if b != c.wantBytes || p != c.wantPackets {
+				t.Errorf("parseBacklogLine(%q) = (%d, %d), want (%d, %d)", c.line, b, p, c.wantBytes, c.wantPackets)
+			}
+		})
+	}
+}

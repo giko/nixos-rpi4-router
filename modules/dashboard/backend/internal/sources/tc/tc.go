@@ -186,18 +186,34 @@ func ParseHTB(raw string) (QdiscStats, error) {
 		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in HTB block")
 	}
 
-	// Reject incomplete output: htb-without-fq_codel-leaf would yield
-	// firstSent == lastSent and silently mask a broken ingress shaper
-	// (e.g. when `tc qdisc replace … fq_codel` fails during the cake-qos
-	// service startup). HTB+fq_codel is the only valid shape on the IFB
-	// today; one Sent line means the leaf is gone.
-	if firstSent == lastSent {
-		return QdiscStats{}, fmt.Errorf("tc: HTB block missing fq_codel leaf qdisc (only one Sent line found)")
+	// Reject incomplete output: htb-without-fq_codel-leaf would silently
+	// mask a broken ingress shaper (e.g. when `tc qdisc replace … fq_codel`
+	// fails during the cake-qos service startup). Detect leaf presence by
+	// the qdisc declaration, NOT by comparing Sent counters — when ingress
+	// is healthy but not being rate-limited the htb-outer and fq_codel
+	// Sent lines are textually identical.
+	hasFqCodelLeaf := false
+	for _, ln := range htbLines {
+		t := strings.TrimSpace(ln)
+		if strings.HasPrefix(t, "qdisc fq_codel ") && strings.Contains(t, " parent ") {
+			hasFqCodelLeaf = true
+			break
+		}
+	}
+	if !hasFqCodelLeaf {
+		return QdiscStats{}, fmt.Errorf("tc: HTB block missing fq_codel leaf qdisc")
 	}
 	// Leaf-level totals (bytes, packets, dropped) — from fq_codel.
 	q.SentBytes, q.SentPackets, q.Dropped, _, _ = parseSentLine(lastSent)
-	// Rate-limit signal (overlimits, requeues) — from htb outer.
-	_, _, _, q.Overlimits, q.Requeues = parseSentLine(firstSent)
+	// Rate-limit signal (overlimits, requeues) — from htb outer if the
+	// leaf and outer Sent lines are distinct entries (the typical case);
+	// otherwise (one identical-text Sent line covers both) keep the leaf
+	// values which encoded zero-overlimit traffic.
+	if firstSent != lastSent {
+		_, _, _, q.Overlimits, q.Requeues = parseSentLine(firstSent)
+	} else {
+		_, _, _, q.Overlimits, q.Requeues = parseSentLine(lastSent)
+	}
 
 	for _, ln := range htbLines {
 		t := strings.TrimSpace(ln)
@@ -288,14 +304,40 @@ func parseSentLine(line string) (sentB, sentP, dropped, overlimits, requeues int
 }
 
 func parseBacklogLine(line string) (bytes, pkts int64) {
-	// backlog 0b 0p requeues 0
+	// backlog 0b 0p requeues 0      (idle queue)
+	// backlog 12Kb 8p requeues 0    (scaled units when queue grows)
+	// backlog 3Mb 2000p requeues 0
 	fields := strings.Fields(line)
 	if len(fields) < 3 {
 		return
 	}
-	bytes, _ = strconv.ParseInt(strings.TrimSuffix(fields[1], "b"), 10, 64)
+	bytes = parseScaledBytes(fields[1])
 	pkts, _ = strconv.ParseInt(strings.TrimSuffix(fields[2], "p"), 10, 64)
 	return
+}
+
+// parseScaledBytes reads a tc-style size value: "0b", "12345b", "12Kb",
+// "3Mb", "1Gb". Uses 1024-base (kibibytes/mebibytes) per kernel
+// `print_size()`. Returns 0 if the value isn't a recognised shape.
+func parseScaledBytes(v string) int64 {
+	if !strings.HasSuffix(v, "b") {
+		return 0
+	}
+	v = strings.TrimSuffix(v, "b")
+	mul := int64(1)
+	switch {
+	case strings.HasSuffix(v, "G"):
+		mul = 1024 * 1024 * 1024
+		v = strings.TrimSuffix(v, "G")
+	case strings.HasSuffix(v, "M"):
+		mul = 1024 * 1024
+		v = strings.TrimSuffix(v, "M")
+	case strings.HasSuffix(v, "K"):
+		mul = 1024
+		v = strings.TrimSuffix(v, "K")
+	}
+	n, _ := strconv.ParseInt(v, 10, 64)
+	return n * mul
 }
 
 // parseBandwidth pulls "bandwidth NNNMbit" / "NNNKbit" / "NNNGbit" from
