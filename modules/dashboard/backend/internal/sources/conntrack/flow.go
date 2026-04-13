@@ -40,6 +40,7 @@ type FlowKey struct {
 	OrigDstIP   netip.Addr
 	OrigSrcPort uint16
 	OrigDstPort uint16
+	Identifier  uint32 // ICMP echo id (proto 1/58). Zero for TCP/UDP/SCTP etc.
 }
 
 // FlowBytes is a per-flow snapshot emitted by EnumerateFlows each tick.
@@ -172,6 +173,7 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 		sportCount int
 		dportCount int
 		bytesCount int
+		idCount    int
 	)
 	for _, f := range fields {
 		kv := strings.SplitN(f, "=", 2)
@@ -225,6 +227,12 @@ func parseLine(line string, opts EnumerateOpts) (FlowBytes, bool, error) {
 				fb.ReplyBytes = n
 			}
 			bytesCount++
+		case "id":
+			if idCount == 0 {
+				n, _ := strconv.ParseUint(kv[1], 10, 32)
+				fb.Key.Identifier = uint32(n)
+			}
+			idCount++
 		case "mark":
 			n, _ := strconv.ParseUint(kv[1], 0, 64)
 			if tag, ok := opts.RouteTags[uint32(n)]; ok {

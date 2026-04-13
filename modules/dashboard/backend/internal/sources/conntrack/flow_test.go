@@ -125,6 +125,9 @@ func TestEnumerateOutboundICMP(t *testing.T) {
 	if fb.LocalPort != 0 || fb.RemotePort != 0 {
 		t.Errorf("icmp ports should be 0, got local=%d remote=%d", fb.LocalPort, fb.RemotePort)
 	}
+	if fb.Key.Identifier != 12345 {
+		t.Errorf("Identifier = %d, want 12345 (from ICMP id)", fb.Key.Identifier)
+	}
 }
 
 func TestEnumerateInboundDNAT(t *testing.T) {
@@ -273,5 +276,40 @@ func TestEnumerateOffloadedFlowKeepsBytes(t *testing.T) {
 	}
 	if flows[0].RouteTag != "wg_sw" {
 		t.Errorf("RouteTag = %q, want wg_sw", flows[0].RouteTag)
+	}
+}
+
+// TestEnumerateICMPIdentifiersDistinguishFlows is the regression guard for
+// the FlowKey ICMP collision fix: two concurrent pings from the same LAN
+// host to the same remote must have distinct FlowKeys. Before Identifier
+// was part of the key, both flows collapsed into one (src/dst/proto were
+// identical and ports are always 0 for ICMP), which caused downstream
+// delta-logic caches keyed on FlowKey to merge or drop one of the flows.
+func TestEnumerateICMPIdentifiersDistinguishFlows(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "icmp_two_flows.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	flows, err := EnumerateFlows(f, EnumerateOpts{
+		LANPrefixes: []netip.Prefix{
+			netip.MustParsePrefix("192.168.1.0/24"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("EnumerateFlows: %v", err)
+	}
+	if len(flows) != 2 {
+		t.Fatalf("want 2 flows, got %d", len(flows))
+	}
+	if flows[0].Key == flows[1].Key {
+		t.Fatalf("FlowKeys collapsed — icmp id not in key? %+v vs %+v", flows[0].Key, flows[1].Key)
+	}
+	if flows[0].Key.Identifier != 7001 || flows[1].Key.Identifier != 7002 {
+		t.Errorf("Identifiers = %d/%d, want 7001/7002",
+			flows[0].Key.Identifier, flows[1].Key.Identifier)
+	}
+	if flows[0].OrigBytes != 252 || flows[1].OrigBytes != 300 {
+		t.Errorf("OrigBytes swapped? flows[0]=%d flows[1]=%d", flows[0].OrigBytes, flows[1].OrigBytes)
 	}
 }
