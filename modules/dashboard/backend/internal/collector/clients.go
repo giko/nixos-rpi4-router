@@ -9,13 +9,16 @@ import (
 
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/dnsmasq"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/ipneigh"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
 
-// NeighFunc returns a map of IP → MAC from the neighbour table.
-// Wraps ipneigh.Collect so tests can inject a fake.
-type NeighFunc func(ctx context.Context) (map[string]string, error)
+// NeighFunc returns entries from the neighbour table keyed by IP. Each
+// entry carries MAC and dev, so the caller can filter out neighbours
+// learned on non-LAN interfaces. Wraps ipneigh.Collect so tests can
+// inject a fake.
+type NeighFunc func(ctx context.Context) (map[string]ipneigh.Entry, error)
 
 // ClientsOpts configures the Clients collector.
 type ClientsOpts struct {
@@ -116,14 +119,24 @@ func (c *Clients) Run(ctx context.Context) error {
 	if c.opts.Neigh != nil {
 		neigh, err := c.opts.Neigh(ctx)
 		if err == nil {
-			for ip, mac := range neigh {
+			// Restrict synthesised neighbour-only clients to entries
+			// learned on the LAN interface. Without this, the upstream
+			// gateway's MAC on the WAN side would show up as a "client"
+			// and pollute the list with remote devices we don't control.
+			// In dev mode (no topology.json) LANInterface is empty and
+			// we accept everything, matching the historical behaviour.
+			lanIf := c.opts.Topology.LANInterface
+			for ip, entry := range neigh {
 				if _, ok := seen[ip]; ok {
+					continue
+				}
+				if lanIf != "" && entry.Dev != lanIf {
 					continue
 				}
 				seen[ip] = struct{}{}
 				clients = append(clients, model.Client{
 					IP:        ip,
-					MAC:       strings.ToLower(mac),
+					MAC:       strings.ToLower(entry.MAC),
 					LeaseType: "neighbor",
 				})
 			}

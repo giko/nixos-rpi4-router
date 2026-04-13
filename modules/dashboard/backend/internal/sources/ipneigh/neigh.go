@@ -10,6 +10,16 @@ import (
 // Runner executes a command and returns its stdout.
 type Runner func(ctx context.Context, args ...string) (string, error)
 
+// Entry is a single parsed neighbour-table entry. Dev is the interface
+// name from the `dev <iface>` field so callers can filter out neighbours
+// learned on WAN or other non-LAN interfaces — otherwise the upstream
+// gateway's ARP entry becomes a synthetic "neighbor" client.
+type Entry struct {
+	IP  string
+	MAC string
+	Dev string
+}
+
 // DefaultRunner exec-invokes the real ip binary.
 func DefaultRunner(ctx context.Context, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "ip", args...)
@@ -20,9 +30,11 @@ func DefaultRunner(ctx context.Context, args ...string) (string, error) {
 	return string(out), nil
 }
 
-// Collect runs `ip neigh show` and returns a map of IPv4 to MAC.
-// FAILED and INCOMPLETE entries are filtered out.
-func Collect(ctx context.Context, run Runner) (map[string]string, error) {
+// Collect runs `ip neigh show` and returns entries with IP, MAC, and dev
+// (interface) preserved. FAILED and INCOMPLETE entries are filtered out.
+// The result is keyed by IP; if the same IP appears twice the last entry
+// wins, matching the historical behaviour of the map-returning API.
+func Collect(ctx context.Context, run Runner) (map[string]Entry, error) {
 	out, err := run(ctx, "neigh", "show")
 	if err != nil {
 		return nil, fmt.Errorf("collect: %w", err)
@@ -30,10 +42,10 @@ func Collect(ctx context.Context, run Runner) (map[string]string, error) {
 	return parseNeigh(out), nil
 }
 
-// parseNeigh parses raw `ip neigh show` output into a map of IP to MAC.
-// FAILED and INCOMPLETE entries are skipped. MACs are lowercased.
-func parseNeigh(raw string) map[string]string {
-	result := make(map[string]string)
+// parseNeigh parses raw `ip neigh show` output. FAILED and INCOMPLETE
+// entries are skipped. MACs are lowercased. Returned map is keyed by IP.
+func parseNeigh(raw string) map[string]Entry {
+	result := make(map[string]Entry)
 	for _, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -57,19 +69,21 @@ func parseNeigh(raw string) map[string]string {
 			continue
 		}
 
-		// Find lladdr keyword followed by MAC.
-		mac := ""
+		// Extract optional dev <iface> and required lladdr <mac>.
+		var mac, dev string
 		for i, f := range fields {
 			if f == "lladdr" && i+1 < len(fields) {
 				mac = strings.ToLower(fields[i+1])
-				break
+			}
+			if f == "dev" && i+1 < len(fields) {
+				dev = fields[i+1]
 			}
 		}
 		if mac == "" {
 			continue
 		}
 
-		result[ip] = mac
+		result[ip] = Entry{IP: ip, MAC: mac, Dev: dev}
 	}
 	return result
 }
