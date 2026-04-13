@@ -311,6 +311,107 @@ func TestSnapshotSystemTiersIndependentTimestamps(t *testing.T) {
 	}
 }
 
+func TestSetPoolsHotPreservesFlowCounts(t *testing.T) {
+	s := New()
+
+	// Seed state with flow counts already in place (as if cold tier wrote).
+	s.SetPools([]model.Pool{
+		{
+			Name: "vpn_pool",
+			Members: []model.PoolMember{
+				{Tunnel: "wg_sw", Fwmark: "0x20000", Healthy: true, FlowCount: 42},
+				{Tunnel: "wg_us", Fwmark: "0x30000", Healthy: true, FlowCount: 7},
+			},
+		},
+	})
+
+	// Hot tier re-derives topology; FlowCount zero in the incoming slice.
+	s.SetPoolsHot([]model.Pool{
+		{
+			Name: "vpn_pool",
+			Members: []model.PoolMember{
+				{Tunnel: "wg_sw", Fwmark: "0x20000", Healthy: false},
+				{Tunnel: "wg_us", Fwmark: "0x30000", Healthy: true},
+			},
+			FailsafeDropActive: false,
+		},
+	})
+
+	pools, _ := s.SnapshotPools()
+	if len(pools) != 1 {
+		t.Fatalf("len = %d, want 1", len(pools))
+	}
+	if pools[0].Members[0].Healthy {
+		t.Errorf("Healthy was not updated by hot pass")
+	}
+	if pools[0].Members[0].FlowCount != 42 {
+		t.Errorf("FlowCount clobbered: got %d, want 42", pools[0].Members[0].FlowCount)
+	}
+	if pools[0].Members[1].FlowCount != 7 {
+		t.Errorf("FlowCount clobbered: got %d, want 7", pools[0].Members[1].FlowCount)
+	}
+}
+
+func TestSetPoolFlowsOnlyUpdatesCounts(t *testing.T) {
+	s := New()
+
+	s.SetPools([]model.Pool{
+		{
+			Name: "vpn_pool",
+			Members: []model.PoolMember{
+				{Tunnel: "wg_sw", Fwmark: "0x20000", Healthy: true, FlowCount: 1},
+				{Tunnel: "wg_us", Fwmark: "0x30000", Healthy: false, FlowCount: 5},
+			},
+			ClientIPs:          []string{"192.168.1.10"},
+			FailsafeDropActive: true,
+		},
+	})
+
+	s.SetPoolFlows(map[string]map[string]int{
+		"vpn_pool": {"wg_sw": 99, "wg_us": 100},
+	})
+
+	pools, _ := s.SnapshotPools()
+	if len(pools) != 1 {
+		t.Fatalf("len = %d, want 1", len(pools))
+	}
+	if !pools[0].Members[0].Healthy {
+		t.Errorf("Healthy mutated by flow update")
+	}
+	if pools[0].Members[1].Healthy {
+		t.Errorf("Healthy mutated by flow update")
+	}
+	if !pools[0].FailsafeDropActive {
+		t.Errorf("FailsafeDropActive mutated by flow update")
+	}
+	if pools[0].Members[0].FlowCount != 99 {
+		t.Errorf("FlowCount wg_sw = %d, want 99", pools[0].Members[0].FlowCount)
+	}
+	if pools[0].Members[1].FlowCount != 100 {
+		t.Errorf("FlowCount wg_us = %d, want 100", pools[0].Members[1].FlowCount)
+	}
+	if len(pools[0].ClientIPs) != 1 || pools[0].ClientIPs[0] != "192.168.1.10" {
+		t.Errorf("ClientIPs mutated: %+v", pools[0].ClientIPs)
+	}
+}
+
+func TestSetPoolFlowsIgnoresUnknownPools(t *testing.T) {
+	s := New()
+	s.SetPools([]model.Pool{
+		{Name: "vpn_pool", Members: []model.PoolMember{{Tunnel: "wg_sw", FlowCount: 3}}},
+	})
+
+	// Unknown pool — ignored without panicking.
+	s.SetPoolFlows(map[string]map[string]int{
+		"ghost": {"wg_sw": 999},
+	})
+
+	pools, _ := s.SnapshotPools()
+	if pools[0].Members[0].FlowCount != 3 {
+		t.Errorf("FlowCount mutated by unknown pool update: %d", pools[0].Members[0].FlowCount)
+	}
+}
+
 func TestClientConnsRoundTrip(t *testing.T) {
 	s := New()
 	s.SetClientConns(map[string]conntrack.ClientConnInfo{
