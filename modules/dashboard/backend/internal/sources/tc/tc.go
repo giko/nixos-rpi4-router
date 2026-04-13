@@ -100,6 +100,7 @@ func ParseCAKE(raw string) (QdiscStats, error) {
 	if len(cakeLines) == 0 {
 		return QdiscStats{}, fmt.Errorf("tc: no `qdisc cake` block found in CAKE output")
 	}
+	var sawSent bool
 	for _, ln := range cakeLines {
 		t := strings.TrimSpace(ln)
 		if strings.HasPrefix(t, "qdisc cake") {
@@ -108,13 +109,14 @@ func ParseCAKE(raw string) (QdiscStats, error) {
 		}
 		if strings.HasPrefix(t, "Sent ") {
 			q.SentBytes, q.SentPackets, q.Dropped, q.Overlimits, q.Requeues = parseSentLine(t)
+			sawSent = true
 		}
 		if strings.HasPrefix(t, "backlog ") {
 			q.BacklogBytes, q.BacklogPkts = parseBacklogLine(t)
 		}
 	}
 	q.Tins = parseCakeTins(cakeLines)
-	if q.SentBytes == 0 && q.SentPackets == 0 {
+	if !sawSent {
 		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in CAKE block")
 	}
 	return q, nil
@@ -145,12 +147,18 @@ func sliceCakeBlock(lines []string) []string {
 	return lines[start:end]
 }
 
-// ParseHTB extracts HTB outer + fq_codel inner counters.
+// ParseHTB extracts HTB outer + fq_codel inner counters into one
+// QdiscStats. Counters live on different qdiscs:
 //
-// The "Sent" line we care about is the LAST one INSIDE the htb block
-// (the fq_codel leaf totals); HTB's own Sent line counts the same
-// packets but we want the leaf so any HTB-internal direct packets are
-// not double-counted.
+//   - bytes / packets / dropped come from the fq_codel LEAF Sent line
+//     (it's the authoritative leaf-level delivery counter; HTB's own
+//     Sent line counts the same packets but a future HTB direct-class
+//     would diverge slightly).
+//   - overlimits and requeues come from the HTB OUTER Sent line because
+//     fq_codel doesn't rate-limit — its overlimits is structurally zero
+//     even when the router is shaping aggressively.
+//   - backlog comes from the fq_codel leaf (the leaf qdisc owns the
+//     queue we want to surface).
 //
 // Bounded to the htb block (mirroring ParseCAKE's sliceCakeBlock). The
 // IFB device only ships htb+fq_codel today, but a future config that
@@ -163,17 +171,30 @@ func ParseHTB(raw string) (QdiscStats, error) {
 	if len(htbLines) == 0 {
 		return QdiscStats{}, fmt.Errorf("tc: no `qdisc htb` block found in HTB output")
 	}
-	var lastSent string
+
+	var firstSent, lastSent string
 	for _, ln := range htbLines {
 		t := strings.TrimSpace(ln)
 		if strings.HasPrefix(t, "Sent ") {
+			if firstSent == "" {
+				firstSent = t
+			}
 			lastSent = t
 		}
 	}
 	if lastSent == "" {
 		return QdiscStats{}, fmt.Errorf("tc: no Sent line found in HTB block")
 	}
-	q.SentBytes, q.SentPackets, q.Dropped, q.Overlimits, q.Requeues = parseSentLine(lastSent)
+
+	// Leaf-level totals (bytes, packets, dropped) — from fq_codel.
+	q.SentBytes, q.SentPackets, q.Dropped, _, _ = parseSentLine(lastSent)
+	// Rate-limit signal (overlimits, requeues) — from htb outer if
+	// distinct from the leaf, else fall back to whatever lastSent reported.
+	if firstSent != "" && firstSent != lastSent {
+		_, _, _, q.Overlimits, q.Requeues = parseSentLine(firstSent)
+	} else {
+		_, _, _, q.Overlimits, q.Requeues = parseSentLine(lastSent)
+	}
 
 	for _, ln := range htbLines {
 		t := strings.TrimSpace(ln)
