@@ -481,8 +481,9 @@ func parseTinValue(v string) int64 {
 		n, _ := strconv.ParseInt(strings.TrimSuffix(v, "Kbit"), 10, 64)
 		return n
 	case strings.HasSuffix(v, "b"):
-		n, _ := strconv.ParseInt(strings.TrimSuffix(v, "b"), 10, 64)
-		return n
+		// CAKE per-tin backlog uses the same scaled-byte format as the
+		// top-level backlog line: "1500b", "12Kb", "3Mb", "1Gb".
+		return parseScaledBytes(v)
 	}
 	n, _ := strconv.ParseInt(v, 10, 64)
 	return n

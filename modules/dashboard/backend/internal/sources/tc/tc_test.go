@@ -214,3 +214,21 @@ func TestParseBacklogScaledUnits(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTinValueScaledBytes(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int64
+	}{
+		{"0", 0},
+		{"1500b", 1500},
+		{"12Kb", 12 * 1024},
+		{"3Mb", 3 * 1024 * 1024},
+		{"1Gb", 1024 * 1024 * 1024},
+	}
+	for _, c := range cases {
+		if got := parseTinValue(c.in); got != c.want {
+			t.Errorf("parseTinValue(%q) = %d, want %d", c.in, got, c.want)
+		}
+	}
+}
