@@ -10,6 +10,7 @@ import (
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/model"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/dnsmasq"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/ipneigh"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/iputil"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
 )
@@ -252,25 +253,7 @@ func (c *Clients) Run(ctx context.Context) error {
 // subnets from topology — public (non-RFC-1918) addresses should
 // never become synthesised clients even if they show up in conntrack.
 func (*Clients) isLANAddress(ip string) bool {
-	addr := net.ParseIP(ip)
-	if addr == nil {
-		return false
-	}
-	v4 := addr.To4()
-	if v4 == nil {
-		return false
-	}
-	// 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-	if v4[0] == 10 {
-		return true
-	}
-	if v4[0] == 172 && v4[1] >= 16 && v4[1] <= 31 {
-		return true
-	}
-	if v4[0] == 192 && v4[1] == 168 {
-		return true
-	}
-	return false
+	return iputil.IsRFC1918(ip)
 }
 
 // compareIPs compares two IPv4 address strings numerically.

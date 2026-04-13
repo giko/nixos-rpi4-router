@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/iputil"
 )
 
 // ClientConnInfo holds per-client connection data derived from conntrack.
@@ -33,7 +35,7 @@ func ClientConnections(ctx context.Context, run Runner) (map[string]ClientConnIn
 			continue
 		}
 
-		src := extractField(line, "src")
+		src := attributeSrc(line)
 		if src == "" {
 			continue
 		}
@@ -55,6 +57,47 @@ func ClientConnections(ctx context.Context, run Runner) (map[string]ClientConnIn
 	}
 
 	return result, nil
+}
+
+// attributeSrc picks the LAN endpoint of a conntrack line. `conntrack -L`
+// prints the original tuple (src/dst) followed by the reply tuple
+// (src/dst). For outbound traffic the original src is the LAN host.
+// For inbound DNAT (port-forward) sessions, the original src is the
+// remote peer's public IP and the reply src is the LAN host that
+// actually holds the connection — so attributing to the original src
+// leaves the LAN host with conn_count=0.
+//
+// Rule: if the original src is public and the reply src is RFC1918, use
+// the reply src. Otherwise use the original src (the common case).
+func attributeSrc(line string) string {
+	origSrc, replySrc := extractOrigAndReplySrc(line)
+	if origSrc == "" {
+		return ""
+	}
+	if !iputil.IsRFC1918(origSrc) && replySrc != "" && iputil.IsRFC1918(replySrc) {
+		return replySrc
+	}
+	return origSrc
+}
+
+// extractOrigAndReplySrc returns the first (original) and second (reply)
+// src=VALUE fields on a conntrack line. Either may be empty.
+func extractOrigAndReplySrc(line string) (string, string) {
+	var first, second string
+	const prefix = "src="
+	for _, field := range strings.Fields(line) {
+		if !strings.HasPrefix(field, prefix) {
+			continue
+		}
+		v := field[len(prefix):]
+		if first == "" {
+			first = v
+			continue
+		}
+		second = v
+		break
+	}
+	return first, second
 }
 
 // extractField finds the first occurrence of "key=value" in a whitespace-
