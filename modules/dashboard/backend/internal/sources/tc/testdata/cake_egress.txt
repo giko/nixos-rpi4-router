@@ -1,0 +1,34 @@
+qdisc cake 8003: root refcnt 2 bandwidth 100Mbit diffserv3 triple-isolate nonat nowash no-ack-filter split-gso rtt 100ms noatm overhead 44 mpu 84 
+ Sent 42483551972 bytes 90374675 pkt (dropped 5613, overlimits 100083367 requeues 20162) 
+ backlog 0b 0p requeues 20162
+ memory used: 5002752b of 5000000b
+ capacity estimate: 100Mbit
+ min/max network layer size:           28 /    1500
+ min/max overhead-adjusted size:       84 /    1544
+ average network hdr offset:           14
+
+                   Bulk  Best Effort        Voice
+  thresh       6250Kbit      100Mbit       25Mbit
+  target            5ms          5ms          5ms
+  interval        100ms        100ms        100ms
+  pk_delay        252us        250us         39us
+  av_delay         62us         65us          4us
+  sp_delay          2us          1us          1us
+  backlog            0b           0b           0b
+  pkts             2565     90360932        16791
+  bytes          233519  42489394523      1921893
+  way_inds           12     23444796            5
+  way_miss          784     10491533         1393
+  way_cols            0          233            0
+  drops               0         5613            0
+  marks               0         1462            0
+  ack_drop            0            0            0
+  sp_flows            1            1            1
+  bk_flows            0            1            0
+  un_flows            0            0            0
+  max_len           590        17198         1700
+  quantum           300         1514          762
+
+qdisc ingress ffff: parent ffff:fff1 ---------------- 
+ Sent 145402121759 bytes 138998638 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 0b 0p requeues 0
