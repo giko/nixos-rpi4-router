@@ -135,7 +135,8 @@ func NewWithDeps(cfg *config.Config, st *state.State, _ *topology.Topology, deps
 		mux.HandleFunc("GET /api/clients/{ip}/traffic", NewClientTrafficHandler(deps.ClientLookup, deps.ClientTraffic))
 	}
 	if deps.AdguardQueryLog != nil {
-		mux.HandleFunc("GET /api/clients/{ip}/dns", NewClientDnsHandler(deps.AdguardQueryLog))
+		clientDnsCache := newClientDnsCache(deps.AdguardQueryLog)
+		mux.HandleFunc("GET /api/clients/{ip}/dns", NewClientDnsHandler(clientDnsCache))
 	}
 	if deps.ClientLookup != nil && deps.Flows != nil {
 		mux.HandleFunc("GET /api/clients/{ip}/connections", NewClientConnectionsHandler(deps.ClientLookup, deps.Flows, deps.Domains))
