@@ -172,6 +172,7 @@ func (rt *ClientDetailRuntime) Tick(now time.Time) error {
 		case conntrack.DirInbound:
 			bytes = fb.OrigBytes
 		}
+		rt.TopDestinations.RecordFlow(fb.ClientIP, domain, fb.Key, now)
 		rt.TopDestinations.RecordBytes(fb.ClientIP, domain, bytes, now)
 	}
 	rt.TopDestinations.Advance(now)

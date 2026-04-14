@@ -4,6 +4,8 @@ import (
 	"net/netip"
 	"testing"
 	"time"
+
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
 )
 
 func TestTopDestDecaysAfter60Minutes(t *testing.T) {
@@ -117,6 +119,70 @@ func TestTopDestEvictionPurgesBuckets(t *testing.T) {
 		if d.Queries > 1 || d.Bytes > 0 {
 			t.Errorf("unexpected totals after eviction+decay: %+v", d)
 		}
+	}
+}
+
+func TestTopDestRecordFlowDedupesWithinMinute(t *testing.T) {
+	td := NewTopDestinations(TopDestOpts{})
+	client := netip.MustParseAddr("192.168.1.42")
+	td.Track(client)
+	now := time.Date(2026, 4, 13, 14, 5, 0, 0, time.UTC)
+
+	key1 := conntrack.FlowKey{
+		Proto:       6,
+		OrigSrcIP:   client,
+		OrigDstIP:   netip.MustParseAddr("93.184.216.34"),
+		OrigSrcPort: 54321,
+		OrigDstPort: 443,
+	}
+	key2 := conntrack.FlowKey{
+		Proto:       6,
+		OrigSrcIP:   client,
+		OrigDstIP:   netip.MustParseAddr("93.184.216.34"),
+		OrigSrcPort: 54322,
+		OrigDstPort: 443,
+	}
+
+	// Two distinct flows in the same minute.
+	td.RecordFlow(client, "example.com", key1, now)
+	td.RecordFlow(client, "example.com", key2, now)
+	// Same flow seen on a later tick within the same minute — should not
+	// count again.
+	td.RecordFlow(client, "example.com", key1, now.Add(10*time.Second))
+
+	dests := td.Snapshot(client)
+	if len(dests) != 1 {
+		t.Fatalf("want 1 destination, got %+v", dests)
+	}
+	if got := dests[0].Flows; got != 2 {
+		t.Errorf("Flows = %d, want 2", got)
+	}
+	if dests[0].Domain != "example.com" {
+		t.Errorf("domain = %q, want example.com", dests[0].Domain)
+	}
+}
+
+func TestTopDestRecordFlowDecaysWithWindow(t *testing.T) {
+	td := NewTopDestinations(TopDestOpts{})
+	client := netip.MustParseAddr("192.168.1.42")
+	td.Track(client)
+	t0 := time.Date(2026, 4, 13, 14, 0, 0, 0, time.UTC)
+
+	key := conntrack.FlowKey{
+		Proto:       6,
+		OrigSrcIP:   client,
+		OrigDstIP:   netip.MustParseAddr("93.184.216.34"),
+		OrigSrcPort: 54321,
+		OrigDstPort: 443,
+	}
+	td.RecordFlow(client, "example.com", key, t0)
+
+	if dests := td.Snapshot(client); len(dests) != 1 || dests[0].Flows != 1 {
+		t.Fatalf("after record: %+v", dests)
+	}
+	td.Advance(t0.Add(61 * time.Minute))
+	if dests := td.Snapshot(client); len(dests) != 0 {
+		t.Fatalf("after decay: expected no destinations, got %+v", dests)
 	}
 }
 
