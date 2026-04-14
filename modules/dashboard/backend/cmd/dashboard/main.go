@@ -52,7 +52,10 @@ func (a *clientLookupAdapter) Status(ip netip.Addr) collector.LeaseStatus {
 }
 
 // IsStaticOrNeighbor walks the latest clients snapshot for a matching
-// IP whose lease_type indicates a non-dynamic origin.
+// IP whose lease_type indicates a non-dynamic origin. "conntrack"
+// synthesises entries for LAN hosts observed in active flows but without
+// a DHCP lease or neighbour record; they are real devices with no DHCP
+// lifecycle, so they must not be treated as dynamic/expired.
 func (a *clientLookupAdapter) IsStaticOrNeighbor(ip netip.Addr) bool {
 	target := ip.String()
 	clients, _ := a.state.SnapshotClients()
@@ -61,7 +64,7 @@ func (a *clientLookupAdapter) IsStaticOrNeighbor(ip netip.Addr) bool {
 			continue
 		}
 		switch c.LeaseType {
-		case "static", "neighbor":
+		case "static", "neighbor", "conntrack":
 			return true
 		}
 	}
