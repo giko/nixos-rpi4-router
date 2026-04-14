@@ -1,10 +1,12 @@
 package collector
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/netip"
-	"os"
+	"os/exec"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -220,11 +222,22 @@ func (rt *ClientDetailRuntime) Snapshot() []conntrack.FlowBytes {
 	return v.([]conntrack.FlowBytes)
 }
 
-// DefaultConntrackReader returns a /proc/net/nf_conntrack opener
-// suitable for production use. Exported so main.go can wire it
-// without importing os in the wiring code.
+// DefaultConntrackReader returns a conntrack-snapshot opener suitable
+// for production use. It shells out to `conntrack -L -o extended`
+// instead of reading /proc/net/nf_conntrack directly: the proc file is
+// mode 0640 root:root and the dashboard runs as a DynamicUser, so the
+// Unix DAC check rejects the open before CAP_NET_ADMIN is consulted.
+// The extended-format CLI output is identical to the proc file for
+// ipv4 rows, so the existing parser needs no changes.
 func DefaultConntrackReader() func() (io.ReadCloser, error) {
 	return func() (io.ReadCloser, error) {
-		return os.Open("/proc/net/nf_conntrack")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "conntrack", "-L", "-o", "extended")
+		out, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("conntrack -L: %w", err)
+		}
+		return io.NopCloser(bytes.NewReader(out)), nil
 	}
 }
