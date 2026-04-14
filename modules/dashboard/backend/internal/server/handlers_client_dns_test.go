@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,23 +17,38 @@ import (
 )
 
 type fakeAdguardLog struct {
-	rows []adguard.QueryLogClientRow
-	err  error
-	last string
+	mu    sync.Mutex
+	rows  []adguard.QueryLogClientRow
+	err   error
+	last  string
+	calls int32
+	// delay, when non-zero, blocks FetchQueryLogForClient for the
+	// configured duration. Used by the singleflight test to verify
+	// concurrent callers coalesce into a single upstream request.
+	delay time.Duration
 }
 
 func (f *fakeAdguardLog) FetchQueryLogForClient(_ context.Context, ip string, _ int) ([]adguard.QueryLogClientRow, error) {
+	atomic.AddInt32(&f.calls, 1)
+	f.mu.Lock()
 	f.last = ip
-	if f.err != nil {
-		return nil, f.err
+	err := f.err
+	rows := f.rows
+	delay := f.delay
+	f.mu.Unlock()
+	if delay > 0 {
+		time.Sleep(delay)
 	}
-	return f.rows, nil
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 func newDnsSrv(t *testing.T, ag AdguardQueryLogClient) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/clients/{ip}/dns", NewClientDnsHandler(ag))
+	mux.HandleFunc("GET /api/clients/{ip}/dns", NewClientDnsHandler(newClientDnsCache(ag)))
 	return httptest.NewServer(mux)
 }
 
@@ -96,5 +113,46 @@ func TestClientDnsBadIPReturns404(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}
+
+// TestClientDnsCoalescesConcurrentFetches fires several concurrent
+// requests for the same client IP against a slow AdGuard backend; the
+// singleflight cache must turn them into a single upstream call. Without
+// this guarantee, two open client-detail tabs re-introduce the hammer
+// that queryLogCache eliminated for the global querylog endpoint.
+func TestClientDnsCoalescesConcurrentFetches(t *testing.T) {
+	fake := &fakeAdguardLog{
+		rows:  []adguard.QueryLogClientRow{{Question: "example.com"}},
+		delay: 100 * time.Millisecond,
+	}
+	srv := newDnsSrv(t, fake)
+	defer srv.Close()
+
+	const parallel = 5
+	var wg sync.WaitGroup
+	wg.Add(parallel)
+	errs := make(chan error, parallel)
+	for i := 0; i < parallel; i++ {
+		go func() {
+			defer wg.Done()
+			resp, err := http.Get(srv.URL + "/api/clients/192.168.1.42/dns")
+			if err != nil {
+				errs <- err
+				return
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				errs <- errors.New("non-200")
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatalf("request failed: %v", err)
+	}
+	if got := atomic.LoadInt32(&fake.calls); got != 1 {
+		t.Errorf("FetchQueryLogForClient called %d times; want 1 (singleflight coalesce)", got)
 	}
 }
