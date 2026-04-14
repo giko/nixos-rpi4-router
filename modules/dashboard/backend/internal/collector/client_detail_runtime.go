@@ -117,6 +117,19 @@ func NewClientDetailRuntime(opts ClientDetailOpts) *ClientDetailRuntime {
 	return rt
 }
 
+// TrackStatic pre-registers a statically-configured LAN host with the
+// four per-client collectors. Static leases have no DHCP lifecycle, so
+// we can't rely on LifecycleTracker.OnBirth to track them — call this
+// once at startup for each entry in topology.StaticLeases. Safe to call
+// for an IP that is also in dnsmasq.leases (Track is idempotent; the
+// lifecycle callbacks will re-Track on birth without clobbering).
+func (rt *ClientDetailRuntime) TrackStatic(ip netip.Addr) {
+	rt.Traffic.Track(ip)
+	rt.FlowCount.Track(ip)
+	rt.DnsRate.Track(ip)
+	rt.TopDestinations.Track(ip)
+}
+
 // handleDnsEntry fans one ingested DNS row into enricher + DnsRate +
 // TopDestinations. Called by DnsIngest.
 func (rt *ClientDetailRuntime) handleDnsEntry(e IngestedEntry) {

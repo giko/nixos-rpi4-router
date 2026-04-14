@@ -11,6 +11,7 @@ type LeaseStatus string
 const (
 	LeaseStatusUnknown    LeaseStatus = "unknown"
 	LeaseStatusDynamic    LeaseStatus = "dynamic"
+	LeaseStatusStatic     LeaseStatus = "static"
 	LeaseStatusNonDynamic LeaseStatus = "non-dynamic"
 	LeaseStatusExpired    LeaseStatus = "expired"
 )

@@ -51,6 +51,23 @@ func (a *clientLookupAdapter) Status(ip netip.Addr) collector.LeaseStatus {
 	return a.runtime.Lifecycle.Status(ip)
 }
 
+// IsStatic returns true only for IPs declared in topology.StaticLeases.
+// Used by the lease-status resolver to route static hosts onto the
+// "return rings" path (they are pre-registered with the per-client
+// collectors at startup), while neighbor / conntrack hosts stay on the
+// non-dynamic short-circuit.
+func (a *clientLookupAdapter) IsStatic(ip netip.Addr) bool {
+	target := ip.String()
+	clients, _ := a.state.SnapshotClients()
+	for _, c := range clients {
+		if c.IP != target {
+			continue
+		}
+		return c.LeaseType == "static"
+	}
+	return false
+}
+
 // IsStaticOrNeighbor walks the latest clients snapshot for a matching
 // IP whose lease_type indicates a non-dynamic origin. "conntrack"
 // synthesises entries for LAN hosts observed in active flows but without
@@ -155,6 +172,21 @@ func main() {
 		ConntrackReader: collector.DefaultConntrackReader(),
 		AdguardIngest:   adguardClient,
 	})
+
+	// Pre-register statically-configured LAN hosts with the per-client
+	// collectors. Unlike dynamic leases, static hosts never fire an
+	// OnBirth via the lifecycle tracker (they aren't in dnsmasq.leases
+	// until the device actually DHCPs), so without this loop their
+	// sparkline rings and top-destination buckets would never exist and
+	// /api/clients/{ip}/sparklines would return nil rings.
+	for _, sl := range topo.StaticLeases {
+		ip, err := netip.ParseAddr(sl.IP)
+		if err != nil {
+			slog.Warn("static lease: invalid IP, skipping", "ip", sl.IP, "err", err)
+			continue
+		}
+		runtime.TrackStatic(ip)
+	}
 
 	collectors := []collector.Collector{
 		collector.NewTraffic(collector.TrafficOpts{

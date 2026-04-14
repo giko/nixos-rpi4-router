@@ -109,7 +109,12 @@ export type QueryLogEntry = {
 };
 
 // --- Client detail (per-client expanded view) ---
-export type LeaseStatus = "dynamic" | "non-dynamic" | "expired" | "unknown";
+export type LeaseStatus =
+  | "dynamic"
+  | "static"
+  | "non-dynamic"
+  | "expired"
+  | "unknown";
 
 export type TrafficSample = {
   t: string;

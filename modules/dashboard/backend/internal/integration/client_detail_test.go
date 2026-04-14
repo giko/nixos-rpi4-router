@@ -97,6 +97,7 @@ func (a lifecycleOnlyLookup) Status(ip netip.Addr) collector.LeaseStatus {
 	return a.rt.Lifecycle.Status(ip)
 }
 
+func (lifecycleOnlyLookup) IsStatic(_ netip.Addr) bool           { return false }
 func (lifecycleOnlyLookup) IsStaticOrNeighbor(_ netip.Addr) bool { return false }
 
 func TestClientDetailEndToEnd(t *testing.T) {
