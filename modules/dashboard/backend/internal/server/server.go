@@ -75,8 +75,9 @@ func readVersion() string {
 // require. main.go populates these in Task 9.1; tests for the bare
 // server can leave them nil and the new routes will return 503.
 type Deps struct {
-	ClientLookup  clientLookup
-	ClientTraffic *collector.ClientTraffic
+	ClientLookup    clientLookup
+	ClientTraffic   *collector.ClientTraffic
+	AdguardQueryLog AdguardQueryLogClient
 }
 
 // New returns the top-level http.Handler with all routes wired.
@@ -127,6 +128,9 @@ func NewWithDeps(cfg *config.Config, st *state.State, _ *topology.Topology, deps
 	// populate Deps so these routes become available in production.
 	if deps.ClientLookup != nil && deps.ClientTraffic != nil {
 		mux.HandleFunc("GET /api/clients/{ip}/traffic", NewClientTrafficHandler(deps.ClientLookup, deps.ClientTraffic))
+	}
+	if deps.AdguardQueryLog != nil {
+		mux.HandleFunc("GET /api/clients/{ip}/dns", NewClientDnsHandler(deps.AdguardQueryLog))
 	}
 
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see

@@ -25,3 +25,20 @@ type ClientTraffic struct {
 	TotalTxBytes10m uint64          `json:"total_tx_bytes_10m"`
 	TickSeconds     int             `json:"tick_seconds"`
 }
+
+type ClientDnsQuery struct {
+	Time         time.Time `json:"time"`
+	Question     string    `json:"question"`
+	QuestionType string    `json:"question_type"`
+	Upstream     string    `json:"upstream"`
+	Reason       string    `json:"reason"`
+	ElapsedMs    float64   `json:"elapsed_ms"`
+	Blocked      bool      `json:"blocked"`
+}
+
+type ClientDns struct {
+	ClientIP string           `json:"client_ip"`
+	Recent   []ClientDnsQuery `json:"recent"`
+	Count    int              `json:"count"`
+	Limit    int              `json:"limit"`
+}

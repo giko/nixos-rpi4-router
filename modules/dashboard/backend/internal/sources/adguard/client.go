@@ -187,6 +187,66 @@ func (c *Client) FetchQueryLogPage(ctx context.Context, olderThan time.Time, lim
 	return body, nil
 }
 
+// QueryLogClientRow is one row from /control/querylog filtered to a
+// single client IP, shaped for the dashboard's per-client DNS panel.
+type QueryLogClientRow struct {
+	Time         time.Time `json:"time"`
+	Question     string    `json:"question"`
+	QuestionType string    `json:"question_type"`
+	Upstream     string    `json:"upstream"`
+	Reason       string    `json:"reason"`
+	ElapsedMs    float64   `json:"elapsed_ms"`
+	Blocked      bool      `json:"blocked"`
+}
+
+// FetchQueryLogForClient pulls up to limit recent query-log entries for
+// the given client IP. AdGuard handles the per-client filter via the
+// search parameter; we re-shape into QueryLogClientRow so handlers and
+// tests don't need to deal with AdGuard's raw question/answer JSON.
+func (c *Client) FetchQueryLogForClient(ctx context.Context, clientIP string, limit int) ([]QueryLogClientRow, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	raw, err := c.FetchQueryLog(ctx, QueryLogOptions{Limit: limit, Client: clientIP})
+	if err != nil {
+		return nil, err
+	}
+	var rows []rawClientQueryRow
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return nil, fmt.Errorf("adguard: decode per-client querylog: %w", err)
+		}
+	}
+	out := make([]QueryLogClientRow, 0, len(rows))
+	for _, r := range rows {
+		t, perr := time.Parse(time.RFC3339Nano, r.Time)
+		if perr != nil {
+			continue
+		}
+		out = append(out, QueryLogClientRow{
+			Time:         t,
+			Question:     r.Question.Name,
+			QuestionType: r.Question.Type,
+			Upstream:     r.Upstream,
+			Reason:       r.Reason,
+			ElapsedMs:    r.ElapsedMs,
+			Blocked:      strings.HasPrefix(r.Reason, "Filtered"),
+		})
+	}
+	return out, nil
+}
+
+type rawClientQueryRow struct {
+	Time     string `json:"time"`
+	Question struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	} `json:"question"`
+	Upstream  string  `json:"upstream"`
+	Reason    string  `json:"reason"`
+	ElapsedMs float64 `json:"elapsedMs"`
+}
+
 // buildSearch concatenates client and domain with a space when both are set.
 func buildSearch(client, domain string) string {
 	parts := make([]string, 0, 2)
