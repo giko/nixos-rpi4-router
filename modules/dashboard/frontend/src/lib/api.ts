@@ -108,6 +108,104 @@ export type QueryLogEntry = {
   elapsedMs: string;
 };
 
+// --- Client detail (per-client expanded view) ---
+export type LeaseStatus = "dynamic" | "non-dynamic" | "expired" | "unknown";
+
+export type TrafficSample = {
+  t: string;
+  rx_bps: number;
+  tx_bps: number;
+};
+
+export type ClientTraffic = {
+  client_ip: string;
+  lease_status: LeaseStatus;
+  samples: TrafficSample[] | null;
+  current_rx_bps: number;
+  current_tx_bps: number;
+  peak_rx_bps_10m: number;
+  peak_tx_bps_10m: number;
+  total_rx_bytes_10m: number;
+  total_tx_bytes_10m: number;
+  tick_seconds: number;
+};
+
+export type ClientDnsQuery = {
+  time: string;
+  question: string;
+  question_type: string;
+  upstream: string;
+  reason: string;
+  elapsed_ms: number;
+  blocked: boolean;
+};
+
+export type ClientDns = {
+  client_ip: string;
+  recent: ClientDnsQuery[];
+  count: number;
+  limit: number;
+};
+
+export type ClientFlow = {
+  proto: string;
+  direction: "outbound" | "inbound";
+  local_ip: string;
+  local_port: number;
+  remote_ip: string;
+  remote_port: number;
+  nat_public_ip?: string;
+  nat_public_port?: number;
+  domain: string;
+  route_tag: string;
+  client_rx_bytes: number;
+  client_tx_bytes: number;
+  state: string;
+};
+
+export type ClientConnections = {
+  client_ip: string;
+  lease_status: LeaseStatus;
+  flows: ClientFlow[];
+  count: number;
+};
+
+export type ClientTopDestination = {
+  domain: string;
+  queries: number;
+  blocked: number;
+  bytes: number;
+  flows: number;
+  last_seen: string;
+};
+
+export type ClientTopDestinations = {
+  client_ip: string;
+  lease_status: LeaseStatus;
+  window_seconds: number;
+  destinations: ClientTopDestination[] | null;
+  count: number;
+};
+
+export type DnsQpsSample = {
+  t: string;
+  queries_per_window: number;
+};
+
+export type FlowCountSample = {
+  t: string;
+  open_flows: number;
+};
+
+export type ClientSparklines = {
+  client_ip: string;
+  lease_status: LeaseStatus;
+  tick_seconds: number;
+  traffic: TrafficSample[] | null;
+  dns_qps: DnsQpsSample[] | null;
+  flow_count: FlowCountSample[] | null;
+};
+
 // --- Firewall ---
 export type PortForward = {
   protocol: string;
@@ -217,6 +315,16 @@ export const api = {
   clients: () => fetchEnvelope<{ clients: Client[] }>("/api/clients"),
   client: (ip: string) =>
     fetchEnvelope<Client>(`/api/clients/${encodeURIComponent(ip)}`),
+  clientTraffic: (ip: string) =>
+    fetchEnvelope<ClientTraffic>(`/api/clients/${encodeURIComponent(ip)}/traffic`),
+  clientDns: (ip: string) =>
+    fetchEnvelope<ClientDns>(`/api/clients/${encodeURIComponent(ip)}/dns`),
+  clientConnections: (ip: string) =>
+    fetchEnvelope<ClientConnections>(`/api/clients/${encodeURIComponent(ip)}/connections`),
+  clientTopDestinations: (ip: string) =>
+    fetchEnvelope<ClientTopDestinations>(`/api/clients/${encodeURIComponent(ip)}/top-destinations`),
+  clientSparklines: (ip: string) =>
+    fetchEnvelope<ClientSparklines>(`/api/clients/${encodeURIComponent(ip)}/sparklines`),
   adguardStats: () => fetchEnvelope<AdguardStats>("/api/adguard/stats"),
   adguardQueryLog: (params: URLSearchParams) =>
     fetchEnvelope<{ queries: QueryLogEntry[] }>(
