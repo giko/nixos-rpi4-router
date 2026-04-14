@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/collector"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/ratelimit"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/adguard"
@@ -70,6 +71,14 @@ func readVersion() string {
 	return "dev"
 }
 
+// Deps bundles the optional collectors that the client-detail handlers
+// require. main.go populates these in Task 9.1; tests for the bare
+// server can leave them nil and the new routes will return 503.
+type Deps struct {
+	ClientLookup  clientLookup
+	ClientTraffic *collector.ClientTraffic
+}
+
 // New returns the top-level http.Handler with all routes wired.
 //
 // Route precedence (Go 1.22 ServeMux):
@@ -83,7 +92,16 @@ func readVersion() string {
 // does not unify them when a /-catch-all is also present: without the bare
 // /api registration, a GET /api falls through to the SPA handler and
 // returns the HTML shell instead of a JSON error.
-func New(cfg *config.Config, st *state.State, _ *topology.Topology) http.Handler {
+func New(cfg *config.Config, st *state.State, topo *topology.Topology) http.Handler {
+	return NewWithDeps(cfg, st, topo, Deps{})
+}
+
+// NewWithDeps is like New but lets the caller provide the optional
+// client-detail collector wiring. When Deps are nil, the client-detail
+// routes are simply not registered (they fall through to the /api/
+// JSON 404). Task 9.1 will switch cmd/dashboard/main.go over to call
+// this directly with populated collectors.
+func NewWithDeps(cfg *config.Config, st *state.State, _ *topology.Topology, deps Deps) http.Handler {
 	mux := http.NewServeMux()
 
 	// Specific API routes first.
@@ -103,6 +121,13 @@ func New(cfg *config.Config, st *state.State, _ *topology.Topology) http.Handler
 	mux.HandleFunc("GET /api/firewall/counters", handleFirewallCounters(st))
 	mux.HandleFunc("GET /api/upnp", handleUPnP(st))
 	mux.HandleFunc("GET /api/qos", handleQoS(st))
+
+	// Client-detail routes (Task 8.x). Only registered when the caller
+	// supplies the collectors. TODO(Task 9.1): cmd/dashboard/main.go will
+	// populate Deps so these routes become available in production.
+	if deps.ClientLookup != nil && deps.ClientTraffic != nil {
+		mux.HandleFunc("GET /api/clients/{ip}/traffic", NewClientTrafficHandler(deps.ClientLookup, deps.ClientTraffic))
+	}
 
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see
 	// comment above New.
