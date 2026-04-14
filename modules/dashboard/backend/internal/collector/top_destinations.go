@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/conntrack"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -26,11 +27,27 @@ type TopDestOpts struct {
 
 type minuteDelta struct {
 	queries, blocked, bytes uint64
+	flows                   uint32
 }
 
 type minuteSlot struct {
 	start     time.Time
 	perDomain map[string]minuteDelta
+	// flowKeys dedupes flows observed in this minute bucket. Scoped to
+	// (domain → flow 5-tuple) so the same conntrack entry seen on
+	// successive ticks within the same minute only increments Flows once.
+	// Cleared when the bucket is rotated out of the 60-minute window.
+	flowKeys map[flowDedupKey]struct{}
+}
+
+// flowDedupKey identifies a flow for per-minute dedup in the flows
+// counter. The conntrack 5-tuple is stable for the lifetime of a flow;
+// pairing it with the attributed domain prevents a single flow from
+// double-counting if it somehow maps to multiple domains in the same
+// minute (shouldn't happen in practice — belt + suspenders).
+type flowDedupKey struct {
+	key    conntrack.FlowKey
+	domain string
 }
 
 type clientAgg struct {
@@ -94,6 +111,57 @@ func (td *TopDestinations) RecordBytes(ip netip.Addr, question string, bytes uin
 	td.record(ip, registrableDomain(question), false, bytes, now, false)
 }
 
+// RecordFlow registers one observation of flowKey targeting the domain
+// backing remote IP. Repeated calls with the same flowKey inside the
+// same minute bucket are deduplicated, so a long-lived flow seen on
+// successive ticks only increments Flows once per minute. Bucket
+// rotation later subtracts the per-bucket flow count from the 60-minute
+// rollup, keeping Snapshot().Flows consistent with the sliding window.
+func (td *TopDestinations) RecordFlow(ip netip.Addr, question string, flowKey conntrack.FlowKey, now time.Time) {
+	domain := registrableDomain(question)
+	td.mu.RLock()
+	ca, ok := td.agg[ip]
+	td.mu.RUnlock()
+	if !ok {
+		return
+	}
+	ca.mu.Lock()
+	defer ca.mu.Unlock()
+
+	bucketIdx := ca.rotate(now, td.opts.MinuteBuckets)
+	if bucketIdx < 0 {
+		return // outside the sliding window; nothing to attribute
+	}
+
+	slot := &ca.buckets[bucketIdx]
+	if slot.flowKeys == nil {
+		slot.flowKeys = make(map[flowDedupKey]struct{})
+	}
+	dk := flowDedupKey{key: flowKey, domain: domain}
+	if _, seen := slot.flowKeys[dk]; seen {
+		return // already counted this flow in this minute
+	}
+	slot.flowKeys[dk] = struct{}{}
+
+	if slot.perDomain == nil {
+		slot.perDomain = make(map[string]minuteDelta)
+	}
+	s := slot.perDomain[domain]
+	s.flows++
+	slot.perDomain[domain] = s
+
+	t := ca.totals[domain]
+	if t == nil {
+		t = &TopDestination{Domain: domain}
+		ca.totals[domain] = t
+	}
+	t.Flows++
+	if now.After(t.LastSeen) {
+		t.LastSeen = now
+	}
+	ca.evictOverCap(td.opts.PerClientCap)
+}
+
 func (td *TopDestinations) record(ip netip.Addr, domain string, blocked bool, bytes uint64, now time.Time, isQuery bool) {
 	td.mu.RLock()
 	ca, ok := td.agg[ip]
@@ -141,8 +209,16 @@ func (td *TopDestinations) record(ip netip.Addr, domain string, blocked bool, by
 		t.LastSeen = now
 	}
 
-	// Evict least-recent when over cap.
-	for len(ca.totals) > td.opts.PerClientCap {
+	ca.evictOverCap(td.opts.PerClientCap)
+}
+
+// evictOverCap trims the per-client totals map down to PerClientCap by
+// dropping the least-recently-seen domains. Purges matching entries
+// from every minute bucket (both perDomain deltas and flowKey dedup
+// sets) so a later rotate() doesn't subtract stale deltas and a
+// re-appearing domain doesn't carry ghost flow-dedup state.
+func (ca *clientAgg) evictOverCap(cap int) {
+	for len(ca.totals) > cap {
 		var oldestName string
 		var oldestTime time.Time
 		first := true
@@ -156,10 +232,13 @@ func (td *TopDestinations) record(ip netip.Addr, domain string, blocked bool, by
 			break
 		}
 		delete(ca.totals, oldestName)
-		// Also purge from all minute buckets so a later rotate() doesn't
-		// subtract stale deltas.
 		for i := range ca.buckets {
 			delete(ca.buckets[i].perDomain, oldestName)
+			for dk := range ca.buckets[i].flowKeys {
+				if dk.domain == oldestName {
+					delete(ca.buckets[i].flowKeys, dk)
+				}
+			}
 		}
 	}
 }
@@ -212,11 +291,17 @@ func (ca *clientAgg) rotate(now time.Time, buckets int) int {
 			} else {
 				t.Bytes = 0
 			}
-			if t.Queries == 0 && t.Blocked == 0 && t.Bytes == 0 {
+			if t.Flows >= v.flows {
+				t.Flows -= v.flows
+			} else {
+				t.Flows = 0
+			}
+			if t.Queries == 0 && t.Blocked == 0 && t.Bytes == 0 && t.Flows == 0 {
 				delete(ca.totals, domain)
 			}
 		}
 		old.perDomain = nil
+		old.flowKeys = nil
 		old.start = nextMinute
 		ca.curMin = nextMinute
 	}
