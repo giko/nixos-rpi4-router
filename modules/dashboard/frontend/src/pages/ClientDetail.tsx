@@ -6,6 +6,12 @@ import { MonoText } from "@/components/MonoText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PoolBadge } from "@/components/PoolBadge";
 import { StaleIndicator } from "@/components/StaleIndicator";
+import { ClientDetailFilterProvider } from "@/components/client-detail/useClientDetailFilter";
+import { ActivitySparklines } from "@/components/client-detail/ActivitySparklines";
+import { TrafficGraph } from "@/components/client-detail/TrafficGraph";
+import { TopDestinations } from "@/components/client-detail/TopDestinations";
+import { DnsQueries } from "@/components/client-detail/DnsQueries";
+import { OpenConnections } from "@/components/client-detail/OpenConnections";
 
 /* ------------------------------------------------------------------ */
 /*  Route rendering                                                    */
@@ -126,65 +132,82 @@ export function ClientDetail() {
   const refetchFailed = clientQ.isError;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/clients"
-            className="text-sm text-primary hover:underline"
-          >
-            &larr; Clients
-          </Link>
-          <h1 className="text-lg font-semibold">
-            {client.hostname || client.ip}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {refetchFailed && (
-            <span className="text-[10px] uppercase tracking-wider font-bold bg-rose/10 text-rose px-2 py-0.5 rounded-sm">
-              Refetch failed
-            </span>
-          )}
-          <StaleIndicator
-            stale={clientQ.data.stale}
-            updatedAt={clientQ.data.updated_at}
-          />
-        </div>
-      </div>
-
-      {/* Two-column detail grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* Identity */}
-        <div className="lg:col-span-6 bg-surface-container rounded-sm p-4">
-          <h2 className="label-xs mb-3">Identity</h2>
-          <DetailRow label="IP Address">
-            <MonoText>{client.ip}</MonoText>
-          </DetailRow>
-          <DetailRow label="MAC Address">
-            <MonoText className="text-on-surface-variant">
-              {client.mac || "--"}
-            </MonoText>
-          </DetailRow>
-          <DetailRow label="Lease Type">
-            <LeaseTypeBadge type={client.lease_type} />
-          </DetailRow>
-          <DetailRow label="Allowlist">
-            <AllowlistBadge status={client.allowlist_status} />
-          </DetailRow>
+    <ClientDetailFilterProvider>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/clients"
+              className="text-sm text-primary hover:underline"
+            >
+              &larr; Clients
+            </Link>
+            <h1 className="text-lg font-semibold">
+              {client.hostname || client.ip}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {refetchFailed && (
+              <span className="text-[10px] uppercase tracking-wider font-bold bg-rose/10 text-rose px-2 py-0.5 rounded-sm">
+                Refetch failed
+              </span>
+            )}
+            <StaleIndicator
+              stale={clientQ.data.stale}
+              updatedAt={clientQ.data.updated_at}
+            />
+          </div>
         </div>
 
-        {/* Routing */}
-        <div className="lg:col-span-6 bg-surface-container rounded-sm p-4">
-          <h2 className="label-xs mb-3">Routing</h2>
-          <DetailRow label="Route">
-            <RouteValue route={client.route} />
-          </DetailRow>
-          <DetailRow label="Connections">
-            <MonoText>{client.conn_count.toLocaleString()}</MonoText>
-          </DetailRow>
+        {/* Two-column detail grid */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          {/* Identity */}
+          <div className="lg:col-span-6 bg-surface-container rounded-sm p-4">
+            <h2 className="label-xs mb-3">Identity</h2>
+            <DetailRow label="IP Address">
+              <MonoText>{client.ip}</MonoText>
+            </DetailRow>
+            <DetailRow label="MAC Address">
+              <MonoText className="text-on-surface-variant">
+                {client.mac || "--"}
+              </MonoText>
+            </DetailRow>
+            <DetailRow label="Lease Type">
+              <LeaseTypeBadge type={client.lease_type} />
+            </DetailRow>
+            <DetailRow label="Allowlist">
+              <AllowlistBadge status={client.allowlist_status} />
+            </DetailRow>
+          </div>
+
+          {/* Routing */}
+          <div className="lg:col-span-6 bg-surface-container rounded-sm p-4">
+            <h2 className="label-xs mb-3">Routing</h2>
+            <DetailRow label="Route">
+              <RouteValue route={client.route} />
+            </DetailRow>
+            <DetailRow label="Connections">
+              <MonoText>{client.conn_count.toLocaleString()}</MonoText>
+            </DetailRow>
+          </div>
         </div>
+
+        {/* Activity overview (highest-density at-a-glance) */}
+        <ActivitySparklines ip={client.ip} />
+
+        {/* Traffic graph — full width */}
+        <TrafficGraph ip={client.ip} />
+
+        {/* Top destinations + DNS queries — side-by-side on wide screens */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TopDestinations ip={client.ip} />
+          <DnsQueries ip={client.ip} />
+        </div>
+
+        {/* Open connections — last, full width (longest table) */}
+        <OpenConnections ip={client.ip} />
       </div>
-    </div>
+    </ClientDetailFilterProvider>
   );
 }
