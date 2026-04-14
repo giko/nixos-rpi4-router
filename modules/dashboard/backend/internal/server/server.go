@@ -81,6 +81,8 @@ type Deps struct {
 	Flows           FlowSource
 	Domains         DomainLookup
 	TopDestinations *collector.TopDestinations
+	DnsRate         *collector.DnsRate
+	FlowCount       *collector.FlowCount
 }
 
 // New returns the top-level http.Handler with all routes wired.
@@ -140,6 +142,10 @@ func NewWithDeps(cfg *config.Config, st *state.State, _ *topology.Topology, deps
 	}
 	if deps.ClientLookup != nil && deps.TopDestinations != nil {
 		mux.HandleFunc("GET /api/clients/{ip}/top-destinations", NewClientTopDestinationsHandler(deps.ClientLookup, deps.TopDestinations))
+	}
+	if deps.ClientLookup != nil {
+		mux.HandleFunc("GET /api/clients/{ip}/sparklines",
+			NewClientSparklinesHandler(deps.ClientLookup, deps.ClientTraffic, deps.DnsRate, deps.FlowCount))
 	}
 
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see

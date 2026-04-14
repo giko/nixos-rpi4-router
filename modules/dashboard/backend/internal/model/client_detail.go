@@ -91,3 +91,26 @@ type ClientTopDestinations struct {
 	Destinations  []ClientTopDestination `json:"destinations"`
 	Count         int                    `json:"count"`
 }
+
+type DnsQpsSample struct {
+	T                time.Time `json:"t"`
+	QueriesPerWindow uint32    `json:"queries_per_window"`
+}
+
+type FlowCountSample struct {
+	T         time.Time `json:"t"`
+	OpenFlows uint32    `json:"open_flows"`
+}
+
+// ClientSparklines bundles the three short rings the activity panel
+// renders. All three slices are nil for non-dynamic clients (no
+// per-client accounting). TickSeconds applies to all three rings —
+// they share the hot-tier 10-second tick boundary.
+type ClientSparklines struct {
+	ClientIP    string            `json:"client_ip"`
+	LeaseStatus string            `json:"lease_status"`
+	TickSeconds int               `json:"tick_seconds"`
+	Traffic     []TrafficSample   `json:"traffic"`
+	DnsQps      []DnsQpsSample    `json:"dns_qps"`
+	FlowCount   []FlowCountSample `json:"flow_count"`
+}
