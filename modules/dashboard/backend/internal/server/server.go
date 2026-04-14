@@ -78,6 +78,8 @@ type Deps struct {
 	ClientLookup    clientLookup
 	ClientTraffic   *collector.ClientTraffic
 	AdguardQueryLog AdguardQueryLogClient
+	Flows           FlowSource
+	Domains         DomainLookup
 }
 
 // New returns the top-level http.Handler with all routes wired.
@@ -131,6 +133,9 @@ func NewWithDeps(cfg *config.Config, st *state.State, _ *topology.Topology, deps
 	}
 	if deps.AdguardQueryLog != nil {
 		mux.HandleFunc("GET /api/clients/{ip}/dns", NewClientDnsHandler(deps.AdguardQueryLog))
+	}
+	if deps.ClientLookup != nil && deps.Flows != nil {
+		mux.HandleFunc("GET /api/clients/{ip}/connections", NewClientConnectionsHandler(deps.ClientLookup, deps.Flows, deps.Domains))
 	}
 
 	// Both the exact /api path and the /api/ subtree must be JSON 404 — see

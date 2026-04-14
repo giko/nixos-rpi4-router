@@ -42,3 +42,35 @@ type ClientDns struct {
 	Count    int              `json:"count"`
 	Limit    int              `json:"limit"`
 }
+
+// TODO: add age_seconds once a first-seen tracker is wired into the
+// conntrack collector. /proc/net/nf_conntrack reports the remaining
+// timeout, not the age; computing a real age requires a stateful
+// per-FlowKey map that is out of scope for this task.
+
+// ClientFlow describes one open conntrack flow attributed to a client.
+// LocalIP/Port and RemoteIP/Port are oriented from the client's POV
+// regardless of conntrack's original/reply tuple. NATPublicIP/Port are
+// non-zero for inbound DNAT'd flows.
+type ClientFlow struct {
+	Proto         string `json:"proto"`
+	Direction     string `json:"direction"`
+	LocalIP       string `json:"local_ip"`
+	LocalPort     uint16 `json:"local_port"`
+	RemoteIP      string `json:"remote_ip"`
+	RemotePort    uint16 `json:"remote_port"`
+	NATPublicIP   string `json:"nat_public_ip,omitempty"`
+	NATPublicPort uint16 `json:"nat_public_port,omitempty"`
+	Domain        string `json:"domain"`
+	RouteTag      string `json:"route_tag"`
+	ClientRxBytes uint64 `json:"client_rx_bytes"`
+	ClientTxBytes uint64 `json:"client_tx_bytes"`
+	State         string `json:"state"`
+}
+
+type ClientConnections struct {
+	ClientIP    string       `json:"client_ip"`
+	LeaseStatus string       `json:"lease_status"`
+	Flows       []ClientFlow `json:"flows"`
+	Count       int          `json:"count"`
+}
