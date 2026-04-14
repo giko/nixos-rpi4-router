@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/config"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/server"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/adguard"
+	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/dnsmasq"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/sources/ipneigh"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/state"
 	"github.com/giko/nixos-rpi4-router/modules/dashboard/backend/internal/topology"
@@ -30,6 +33,55 @@ func ifbForWAN(wan string) string {
 		return ""
 	}
 	return "ifb4" + wan
+}
+
+// clientLookupAdapter satisfies server.clientLookup by combining the
+// LifecycleTracker (dynamic/expired) with the state-backed client list
+// (static/neighbor). Kept here — not in package server — because it
+// depends on both state.State and the client-detail runtime wiring.
+type clientLookupAdapter struct {
+	state   *state.State
+	runtime *collector.ClientDetailRuntime
+}
+
+// Status returns the lifecycle tracker's view (dynamic / expired /
+// unknown). Non-dynamic is resolved by the server helper via
+// IsStaticOrNeighbor.
+func (a *clientLookupAdapter) Status(ip netip.Addr) collector.LeaseStatus {
+	return a.runtime.Lifecycle.Status(ip)
+}
+
+// IsStaticOrNeighbor walks the latest clients snapshot for a matching
+// IP whose lease_type indicates a non-dynamic origin.
+func (a *clientLookupAdapter) IsStaticOrNeighbor(ip netip.Addr) bool {
+	target := ip.String()
+	clients, _ := a.state.SnapshotClients()
+	for _, c := range clients {
+		if c.IP != target {
+			continue
+		}
+		switch c.LeaseType {
+		case "static", "neighbor":
+			return true
+		}
+	}
+	return false
+}
+
+// buildRouteTags composes the numeric-mark → tunnel-name table used for
+// conntrack flow attribution. Always includes the implicit WAN mark
+// (0x10000); every tunnel with a parseable Fwmark string contributes an
+// entry keyed by its numeric value.
+func buildRouteTags(topo *topology.Topology) map[uint32]string {
+	tags := map[uint32]string{0x10000: "WAN"}
+	for _, tun := range topo.Tunnels {
+		n, err := strconv.ParseUint(tun.Fwmark, 0, 32)
+		if err != nil {
+			continue
+		}
+		tags[uint32(n)] = tun.Name
+	}
+	return tags
 }
 
 func main() {
@@ -82,6 +134,25 @@ func main() {
 		roles[tun.Interface] = "tunnel"
 	}
 
+	// Shared AdGuard client for stats + per-client query log + ingest.
+	// Sharing the underlying *http.Client keeps connection reuse sane.
+	adguardClient := adguard.NewClient(cfg.AdguardURL, nil)
+
+	// LAN prefixes for direction attribution. TODO: revisit when the
+	// topology gains a lan_subnets field — today the router serves two
+	// subnets on the LAN port and both are statically known.
+	lanPrefixes := []netip.Prefix{
+		netip.MustParsePrefix("192.168.1.0/24"),
+		netip.MustParsePrefix("192.168.20.0/24"),
+	}
+
+	runtime := collector.NewClientDetailRuntime(collector.ClientDetailOpts{
+		LANPrefixes:     lanPrefixes,
+		RouteTags:       buildRouteTags(topo),
+		ConntrackReader: collector.DefaultConntrackReader(),
+		AdguardIngest:   adguardClient,
+	})
+
 	collectors := []collector.Collector{
 		collector.NewTraffic(collector.TrafficOpts{
 			NetDevPath: "/proc/net/dev",
@@ -117,7 +188,7 @@ func main() {
 			},
 		}),
 		collector.NewAdguardStats(collector.AdguardStatsOpts{
-			Client: adguard.NewClient(cfg.AdguardURL, nil),
+			Client: adguardClient,
 			State:  st,
 		}),
 		collector.NewSystemMedium(collector.SystemMediumOpts{
@@ -142,9 +213,66 @@ func main() {
 	runner := collector.NewRunner(logger, collectors)
 	runner.Start(ctx)
 
+	// Client-detail runtime: 10s hot tick drives lease scan, conntrack
+	// Tick, and DNS ingest; 1-minute tick reaps tombstoned clients.
+	go func() {
+		t := time.NewTicker(10 * time.Second)
+		defer t.Stop()
+		leasesPath := "/var/lib/dnsmasq/dnsmasq.leases"
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-t.C:
+				leases, err := dnsmasq.ReadLeases(leasesPath)
+				if err != nil {
+					slog.Warn("client-detail: read leases", "err", err)
+					continue
+				}
+				ips := make([]netip.Addr, 0, len(leases))
+				for _, l := range leases {
+					if a, perr := netip.ParseAddr(l.IP); perr == nil {
+						ips = append(ips, a)
+					}
+				}
+				runtime.OnLeaseScan(ips, now)
+				if err := runtime.Tick(now); err != nil {
+					slog.Warn("client-detail: conntrack tick", "err", err)
+				}
+				if err := runtime.IngestTick(ctx, now); err != nil {
+					slog.Warn("client-detail: dns ingest", "err", err)
+				}
+			}
+		}
+	}()
+
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-t.C:
+				if reaped := runtime.Reap(now); len(reaped) > 0 {
+					slog.Info("client-detail: reaped tombstoned clients", "count", len(reaped))
+				}
+			}
+		}
+	}()
+
 	httpServer := &http.Server{
-		Addr:              cfg.Bind,
-		Handler:           server.New(cfg, st, topo),
+		Addr: cfg.Bind,
+		Handler: server.NewWithDeps(cfg, st, topo, server.Deps{
+			ClientLookup:    &clientLookupAdapter{state: st, runtime: runtime},
+			ClientTraffic:   runtime.Traffic,
+			AdguardQueryLog: adguardClient,
+			Flows:           runtime,
+			Domains:         runtime.Domains,
+			TopDestinations: runtime.TopDestinations,
+			DnsRate:         runtime.DnsRate,
+			FlowCount:       runtime.FlowCount,
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
