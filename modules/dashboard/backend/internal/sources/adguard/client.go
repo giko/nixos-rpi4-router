@@ -223,28 +223,32 @@ func (c *Client) FetchQueryLogForClient(ctx context.Context, clientIP string, li
 		if perr != nil {
 			continue
 		}
+		elapsed, _ := strconv.ParseFloat(r.ElapsedMs, 64)
 		out = append(out, QueryLogClientRow{
 			Time:         t,
 			Question:     r.Question.Name,
 			QuestionType: r.Question.Type,
 			Upstream:     r.Upstream,
 			Reason:       r.Reason,
-			ElapsedMs:    r.ElapsedMs,
+			ElapsedMs:    elapsed,
 			Blocked:      strings.HasPrefix(r.Reason, "Filtered"),
 		})
 	}
 	return out, nil
 }
 
+// rawClientQueryRow mirrors the subset of /control/querylog rows the
+// dashboard cares about. AdGuard serialises elapsedMs as a JSON string
+// (e.g. "1.234"), not a number — decoding into float64 therefore fails.
 type rawClientQueryRow struct {
 	Time     string `json:"time"`
 	Question struct {
 		Name string `json:"name"`
 		Type string `json:"type"`
 	} `json:"question"`
-	Upstream  string  `json:"upstream"`
-	Reason    string  `json:"reason"`
-	ElapsedMs float64 `json:"elapsedMs"`
+	Upstream  string `json:"upstream"`
+	Reason    string `json:"reason"`
+	ElapsedMs string `json:"elapsedMs"`
 }
 
 // buildSearch concatenates client and domain with a space when both are set.
