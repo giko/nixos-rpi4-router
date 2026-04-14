@@ -74,3 +74,20 @@ type ClientConnections struct {
 	Flows       []ClientFlow `json:"flows"`
 	Count       int          `json:"count"`
 }
+
+type ClientTopDestination struct {
+	Domain   string    `json:"domain"`
+	Queries  uint64    `json:"queries"`
+	Blocked  uint64    `json:"blocked"`
+	Bytes    uint64    `json:"bytes"`
+	Flows    uint32    `json:"flows"`
+	LastSeen time.Time `json:"last_seen"`
+}
+
+type ClientTopDestinations struct {
+	ClientIP      string                 `json:"client_ip"`
+	LeaseStatus   string                 `json:"lease_status"`
+	WindowSeconds int                    `json:"window_seconds"`
+	Destinations  []ClientTopDestination `json:"destinations"`
+	Count         int                    `json:"count"`
+}
