@@ -59,6 +59,16 @@ func NewClientConnectionsHandler(lookup clientLookup, flows FlowSource, domains 
 }
 
 func buildClientFlow(fb conntrack.FlowBytes, clientIP netip.Addr, domains DomainLookup, now time.Time) model.ClientFlow {
+	routeTag := fb.RouteTag
+	// nftables only marks traffic routed through PBR / tunnel chains;
+	// ordinary WAN-bound flows exit with mark=0 and therefore arrive
+	// here with RouteTag == "". The conntrack parser already applies
+	// the same WAN default for inbound DNAT'd flows; mirror that for
+	// outbound so the UI renders "WAN" instead of "--" for everyday
+	// browsing traffic.
+	if routeTag == "" && fb.Direction == conntrack.DirOutbound {
+		routeTag = "WAN"
+	}
 	cf := model.ClientFlow{
 		Proto:      protoString(fb.Key.Proto),
 		Direction:  fb.Direction.String(),
@@ -66,7 +76,7 @@ func buildClientFlow(fb conntrack.FlowBytes, clientIP netip.Addr, domains Domain
 		LocalPort:  fb.LocalPort,
 		RemoteIP:   addrString(fb.RemoteIP),
 		RemotePort: fb.RemotePort,
-		RouteTag:   fb.RouteTag,
+		RouteTag:   routeTag,
 		State:      fb.State,
 	}
 	if fb.NATPublicIP.IsValid() {

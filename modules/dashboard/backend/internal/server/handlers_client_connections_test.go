@@ -161,6 +161,83 @@ func TestClientConnectionsMissingDomainStaysEmpty(t *testing.T) {
 	}
 }
 
+func TestClientConnectionsOutboundUntaggedDefaultsToWAN(t *testing.T) {
+	client := netip.MustParseAddr("192.168.1.42")
+	remote := netip.MustParseAddr("142.250.190.78")
+	// Ordinary WAN-bound traffic exits with conntrack mark=0 because
+	// nftables only marks PBR / tunnel routes; RouteTag therefore
+	// arrives here as "". The handler should default it to "WAN" so
+	// the UI renders a real label instead of "--".
+	flows := fakeFlows{list: []conntrack.FlowBytes{{
+		Key:        conntrack.FlowKey{Proto: 6, OrigSrcIP: client, OrigDstIP: remote, OrigSrcPort: 50000, OrigDstPort: 443},
+		ClientIP:   client,
+		Direction:  conntrack.DirOutbound,
+		OrigBytes:  100,
+		ReplyBytes: 200,
+		RouteTag:   "",
+		LocalPort:  50000,
+		RemoteIP:   remote,
+		RemotePort: 443,
+		State:      "ESTABLISHED",
+	}}}
+	srv := newConnsSrv(t, fakeLookup{status: collector.LeaseStatusDynamic}, flows, fakeDomains{})
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/api/clients/192.168.1.42/connections")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var env envelope.Response
+	_ = json.NewDecoder(resp.Body).Decode(&env)
+	raw, _ := json.Marshal(env.Data)
+	var body model.ClientConnections
+	_ = json.Unmarshal(raw, &body)
+	if len(body.Flows) != 1 {
+		t.Fatalf("Flows count = %d", len(body.Flows))
+	}
+	if body.Flows[0].RouteTag != "WAN" {
+		t.Errorf("RouteTag = %q, want WAN for untagged outbound", body.Flows[0].RouteTag)
+	}
+}
+
+func TestClientConnectionsInboundUntaggedStaysEmpty(t *testing.T) {
+	// Untagged inbound flows keep their empty RouteTag — the conntrack
+	// parser already applies the WAN default where it makes sense; the
+	// handler only fills the outbound blind spot. If an inbound flow
+	// somehow arrives here with RouteTag == "", we shouldn't invent a
+	// tag for it.
+	client := netip.MustParseAddr("192.168.1.50")
+	remote := netip.MustParseAddr("203.0.113.5")
+	flows := fakeFlows{list: []conntrack.FlowBytes{{
+		Key:        conntrack.FlowKey{Proto: 6, OrigSrcIP: remote, OrigDstIP: client, OrigSrcPort: 41000, OrigDstPort: 8080},
+		ClientIP:   client,
+		Direction:  conntrack.DirInbound,
+		RouteTag:   "",
+		LocalPort:  8080,
+		RemoteIP:   remote,
+		RemotePort: 41000,
+		State:      "ESTABLISHED",
+	}}}
+	srv := newConnsSrv(t, fakeLookup{status: collector.LeaseStatusDynamic}, flows, fakeDomains{})
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/api/clients/192.168.1.50/connections")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var env envelope.Response
+	_ = json.NewDecoder(resp.Body).Decode(&env)
+	raw, _ := json.Marshal(env.Data)
+	var body model.ClientConnections
+	_ = json.Unmarshal(raw, &body)
+	if len(body.Flows) != 1 {
+		t.Fatalf("Flows count = %d", len(body.Flows))
+	}
+	if body.Flows[0].RouteTag != "" {
+		t.Errorf("RouteTag = %q, want empty for untagged inbound", body.Flows[0].RouteTag)
+	}
+}
+
 func TestClientConnectionsNonDynamicStillReturnsFlows(t *testing.T) {
 	client := netip.MustParseAddr("192.168.1.7")
 	remote := netip.MustParseAddr("9.9.9.9")
