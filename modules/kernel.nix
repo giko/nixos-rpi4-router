@@ -28,6 +28,11 @@ in
         "snd_bcm2835" "snd" "soundcore"
         "ppp_generic" "ppp_async" "pppoe"
         "v4l2" "bcm2835_v4l2" "videobuf2"
+        # CVE-2026-31431 ("Copy Fail"): algif_aead LPE. Nothing in the router
+        # stack uses AF_ALG, so block the module until 6.12.x LTS gets the
+        # backport. NixOS emits both `blacklist` and `install /bin/false`,
+        # defeating kernel-triggered request_module() and direct modprobe.
+        "algif_aead"
       ];
 
       kernel.sysctl = {
