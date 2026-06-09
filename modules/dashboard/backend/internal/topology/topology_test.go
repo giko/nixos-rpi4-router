@@ -22,6 +22,7 @@ const fixture = `{
   ],
   "allowlist_enabled": true,
   "allowed_macs": ["aa:bb:cc:dd:ee:ff"],
+  "blocked_macs": ["04:cf:8c:28:ca:ce"],
   "lan_interface": "eth0",
   "wan_interface": "eth1",
   "port_forwards": [{"protocol":"tcp","external_port":35978,"destination":"192.168.20.6:32400"}],
@@ -63,6 +64,9 @@ func TestLoadValid(t *testing.T) {
 	if !topo.AllowlistEnabled {
 		t.Errorf("allowlist_enabled = %v, want true", topo.AllowlistEnabled)
 	}
+	if len(topo.BlockedMACs) != 1 || topo.BlockedMACs[0] != "04:cf:8c:28:ca:ce" {
+		t.Errorf("BlockedMACs = %+v, want [04:cf:8c:28:ca:ce]", topo.BlockedMACs)
+	}
 	if len(topo.PortForwards) != 1 || topo.PortForwards[0].ExternalPort != 35978 {
 		t.Errorf("PortForwards = %+v", topo.PortForwards)
 	}
@@ -87,6 +91,9 @@ func TestLoadAllowlistDisabled(t *testing.T) {
 	}
 	if topo.AllowlistEnabled {
 		t.Errorf("AllowlistEnabled = true, want false")
+	}
+	if len(topo.BlockedMACs) != 0 {
+		t.Errorf("BlockedMACs = %+v, want empty when absent", topo.BlockedMACs)
 	}
 }
 

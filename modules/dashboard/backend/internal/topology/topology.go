@@ -12,12 +12,13 @@ import (
 
 // Topology holds the router topology exported by the NixOS module.
 type Topology struct {
-	Tunnels          []Tunnel        `json:"tunnels"`
-	Pools            []Pool          `json:"pools"`
-	PooledRules      []PooledRule    `json:"pooled_rules"`
-	StaticLeases     []StaticLease   `json:"static_leases"`
-	AllowlistEnabled bool            `json:"allowlist_enabled"`
-	AllowedMACs      []string        `json:"allowed_macs"`
+	Tunnels              []Tunnel              `json:"tunnels"`
+	Pools                []Pool                `json:"pools"`
+	PooledRules          []PooledRule          `json:"pooled_rules"`
+	StaticLeases         []StaticLease         `json:"static_leases"`
+	AllowlistEnabled     bool                  `json:"allowlist_enabled"`
+	AllowedMACs          []string              `json:"allowed_macs"`
+	BlockedMACs          []string              `json:"blocked_macs"`
 	PortForwards         []PortForward         `json:"port_forwards"`
 	PBRSourceRules       []PBRSourceRule       `json:"pbr_source_rules"`
 	PBRDomainRules       []PBRDomainRule       `json:"pbr_domain_rules"`
