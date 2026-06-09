@@ -253,6 +253,7 @@ export function Firewall() {
   const sourceDomainRules = rawRules.pbr?.source_domain_rules ?? [];
   const pooledRules = rawRules.pbr?.pooled_rules ?? [];
   const allowedMacs = rawRules.allowed_macs ?? [];
+  const blockedMacs = rawRules.blocked_macs ?? [];
   const blockedForwardCount1h = rawRules.blocked_forward_count_1h ?? 0;
   const chains = (countersQ.data.data.chains ?? []).map((c) => ({
     ...c,
@@ -288,10 +289,11 @@ export function Firewall() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <StatTile label="Port forwards" value={String(portForwards.length)} />
         <StatTile label="PBR rules" value={String(sourceRules.length + domainRules.length + sourceDomainRules.length + pooledRules.length)} />
         <StatTile label="Allowed MACs" value={String(allowedMacs.length)} />
+        <StatTile label="Blocked MACs" value={String(blockedMacs.length)} />
         <StatTile
           label="Blocked forwards (1h)"
           value={blockedForwardCount1h.toLocaleString()}
@@ -383,6 +385,23 @@ export function Firewall() {
         ) : (
           <div className="bg-surface-container rounded-sm p-4 flex flex-wrap gap-2">
             {allowedMacs.map((m) => (
+              <MonoText key={m} className="text-xs bg-surface-high px-2 py-1 rounded-sm">
+                {m}
+              </MonoText>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="label-xs">Blocklisted MACs ({blockedMacs.length})</h2>
+        {blockedMacs.length === 0 ? (
+          <p className="text-sm text-on-surface-variant font-mono">
+            Blocklist is empty.
+          </p>
+        ) : (
+          <div className="bg-surface-container rounded-sm p-4 flex flex-wrap gap-2">
+            {blockedMacs.map((m) => (
               <MonoText key={m} className="text-xs bg-surface-high px-2 py-1 rounded-sm">
                 {m}
               </MonoText>
