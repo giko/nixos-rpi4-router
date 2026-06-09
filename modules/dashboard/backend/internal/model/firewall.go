@@ -2,7 +2,7 @@ package model
 
 // Firewall is the snapshot served by three endpoints:
 //
-//	/api/firewall/rules     → {port_forwards, pbr, allowed_macs, blocked_forward_count_1h}
+//	/api/firewall/rules     → {port_forwards, pbr, allowed_macs, blocked_macs, blocked_forward_count_1h}
 //	/api/firewall/counters  → {chains: [...]}
 //	/api/upnp               → {leases: [...]}
 //
@@ -14,6 +14,7 @@ type Firewall struct {
 	PortForwards []PortForward `json:"port_forwards"`
 	PBR          PBR           `json:"pbr"`
 	AllowedMACs  []string      `json:"allowed_macs"`
+	BlockedMACs  []string      `json:"blocked_macs"`
 
 	// BlockedForwardCount1h is the delta of summed packet counters on
 	// the forward chain's drop rules over the trailing ~60 minutes.

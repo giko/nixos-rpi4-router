@@ -386,6 +386,7 @@ func TestFirewallRulesHandler(t *testing.T) {
 		PortForwards:          []model.PortForward{{Protocol: "tcp", ExternalPort: 35978, Destination: "192.168.20.6:32400"}},
 		PBR:                   model.PBR{SourceRules: []model.PBRSourceRule{{Sources: []string{"192.168.1.225"}, Tunnel: "wg_sw"}}},
 		AllowedMACs:           []string{"aa:bb:cc:dd:ee:ff"},
+		BlockedMACs:           []string{"04:cf:8c:28:ca:ce"},
 		BlockedForwardCount1h: 7,
 	})
 	h := New(&config.Config{}, st, &topology.Topology{})
@@ -400,6 +401,7 @@ func TestFirewallRulesHandler(t *testing.T) {
 			PortForwards          []map[string]any `json:"port_forwards"`
 			PBR                   map[string]any   `json:"pbr"`
 			AllowedMACs           []string         `json:"allowed_macs"`
+			BlockedMACs           []string         `json:"blocked_macs"`
 			BlockedForwardCount1h float64          `json:"blocked_forward_count_1h"`
 		} `json:"data"`
 	}
@@ -414,6 +416,9 @@ func TestFirewallRulesHandler(t *testing.T) {
 	}
 	if len(env.Data.AllowedMACs) != 1 || env.Data.AllowedMACs[0] != "aa:bb:cc:dd:ee:ff" {
 		t.Errorf("allowed_macs = %+v", env.Data.AllowedMACs)
+	}
+	if len(env.Data.BlockedMACs) != 1 || env.Data.BlockedMACs[0] != "04:cf:8c:28:ca:ce" {
+		t.Errorf("blocked_macs = %+v", env.Data.BlockedMACs)
 	}
 	if env.Data.BlockedForwardCount1h != 7 {
 		t.Errorf("blocked_forward_count_1h = %v, want 7", env.Data.BlockedForwardCount1h)

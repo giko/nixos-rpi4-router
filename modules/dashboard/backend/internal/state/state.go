@@ -499,6 +499,10 @@ func copyFirewall(src model.Firewall) model.Firewall {
 		dst.AllowedMACs = make([]string, len(src.AllowedMACs))
 		copy(dst.AllowedMACs, src.AllowedMACs)
 	}
+	if src.BlockedMACs != nil {
+		dst.BlockedMACs = make([]string, len(src.BlockedMACs))
+		copy(dst.BlockedMACs, src.BlockedMACs)
+	}
 	if src.Chains != nil {
 		dst.Chains = make([]model.FirewallChain, len(src.Chains))
 		for i, c := range src.Chains {

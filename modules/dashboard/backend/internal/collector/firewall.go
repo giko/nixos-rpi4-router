@@ -132,6 +132,7 @@ func (c *Firewall) Run(ctx context.Context) error {
 			PooledRules:       []model.PBRPooledRule{},
 		},
 		AllowedMACs: []string{},
+		BlockedMACs: []string{},
 		Chains:      make([]model.FirewallChain, 0, len(r.Chains)),
 		UPnPLeases:  make([]model.UPnPLease, 0, len(r.UPnPMappings)),
 	}
@@ -140,6 +141,9 @@ func (c *Firewall) Run(ctx context.Context) error {
 	if topo := c.opts.Topology; topo != nil {
 		if len(topo.AllowedMACs) > 0 {
 			out.AllowedMACs = append(out.AllowedMACs, topo.AllowedMACs...)
+		}
+		if len(topo.BlockedMACs) > 0 {
+			out.BlockedMACs = append(out.BlockedMACs, topo.BlockedMACs...)
 		}
 		for _, pf := range topo.PortForwards {
 			out.PortForwards = append(out.PortForwards, model.PortForward{

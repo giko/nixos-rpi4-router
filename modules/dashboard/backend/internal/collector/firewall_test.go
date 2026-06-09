@@ -14,6 +14,7 @@ import (
 func newTestTopology() *topology.Topology {
 	return &topology.Topology{
 		AllowedMACs: []string{"aa:bb:cc:dd:ee:ff"},
+		BlockedMACs: []string{"04:cf:8c:28:ca:ce"},
 		PortForwards: []topology.PortForward{
 			{Protocol: "tcp", ExternalPort: 35978, Destination: "192.168.20.6:32400"},
 		},
@@ -58,6 +59,9 @@ func TestFirewallCollectorPopulatesState(t *testing.T) {
 	}
 	if len(got.AllowedMACs) != 1 || got.AllowedMACs[0] != "aa:bb:cc:dd:ee:ff" {
 		t.Errorf("AllowedMACs = %+v", got.AllowedMACs)
+	}
+	if len(got.BlockedMACs) != 1 || got.BlockedMACs[0] != "04:cf:8c:28:ca:ce" {
+		t.Errorf("BlockedMACs = %+v", got.BlockedMACs)
 	}
 	if len(got.Chains) != 2 {
 		t.Errorf("Chains = %+v", got.Chains)

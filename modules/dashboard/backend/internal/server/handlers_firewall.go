@@ -20,9 +20,9 @@ const (
 )
 
 // handleFirewallRules serves the static-ish Firewall projection:
-// port forwards, PBR rules, allowed MACs, and the rolled-up 1h
-// forward-drop count. Spec §7.4: "{port_forwards, pbr, allowed_macs,
-// blocked_forward_count_1h}".
+// port forwards, PBR rules, allowed MACs, blocked MACs, and the
+// rolled-up 1h forward-drop count. Spec §7.4: "{port_forwards, pbr,
+// allowed_macs, blocked_macs, blocked_forward_count_1h}".
 func handleFirewallRules(st *state.State) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		fw, updated := st.SnapshotFirewall()
@@ -31,6 +31,7 @@ func handleFirewallRules(st *state.State) http.HandlerFunc {
 			"port_forwards":            fw.PortForwards,
 			"pbr":                      fw.PBR,
 			"allowed_macs":             fw.AllowedMACs,
+			"blocked_macs":             fw.BlockedMACs,
 			"blocked_forward_count_1h": fw.BlockedForwardCount1h,
 		}
 		envelope.WriteJSON(w, http.StatusOK, body, updated, stale)
