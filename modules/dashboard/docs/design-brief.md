@@ -26,7 +26,7 @@ Eight subsystems, each deserving its own "detail" view. The designer can decide 
 |---|---|---|
 | **VPN tunnels** | 4 WireGuard tunnels (SE, US, NL, UK) | health, handshake age, rx/tx, current exit IP, latency |
 | **VPN pools** | Named pools (currently one: `all_vpns`), each containing tunnels | per-pool health, flow distribution across member tunnels, member clients |
-| **Clients** | ~20-30 devices (laptops, phones, IoT, consoles) | hostname, IP, MAC, lease type (static/dynamic), current route (WAN or tunnel), allowlist status |
+| **Clients** | ~20-30 devices (laptops, phones, IoT, consoles) | hostname, IP, MAC, lease type (static/dynamic), current route (WAN or tunnel), access status (allowlist/blocklist) |
 | **AdGuard DNS** | DNS stats | queries/hour, block rate %, top blocked domains, top clients, recent queries stream |
 | **Traffic** | Network interfaces (eth0 LAN, eth1 WAN, 4x wg*) | live rx/tx rate graphs, totals, top flows |
 | **Firewall & PBR** | Port forwards, nft chain counters, PBR rules (source-based, domain-based, pooled) | rule table, hit counters, recent drops, blocked-MAC hits |
@@ -56,7 +56,7 @@ A good design makes it obvious how to move *between* these: "show me the clients
 v1 is **read-only**. But v2+ will add mutation actions, and the design should leave room for them without a rework. Examples of future actions:
 
 - Toggle a client between "WAN direct" and "VPN pool"
-- Add/remove a MAC from the allowlist
+- Add/remove a MAC from the allowlist/blocklist
 - Flush conntrack for a client (forces re-routing of in-flight flows)
 - Restart a specific VPN tunnel
 - Add a DNS rewrite
