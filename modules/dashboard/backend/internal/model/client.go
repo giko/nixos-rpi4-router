@@ -3,13 +3,13 @@ package model
 import "time"
 
 type Client struct {
-	Hostname        string    `json:"hostname"`
-	IP              string    `json:"ip"`
-	MAC             string    `json:"mac"`
-	LeaseType       string    `json:"lease_type"`
-	LastSeen        time.Time `json:"last_seen"`
-	Route           string    `json:"route"`
-	AllowlistStatus string    `json:"allowlist_status"`
+	Hostname     string    `json:"hostname"`
+	IP           string    `json:"ip"`
+	MAC          string    `json:"mac"`
+	LeaseType    string    `json:"lease_type"`
+	LastSeen     time.Time `json:"last_seen"`
+	Route        string    `json:"route"`
+	AccessStatus string    `json:"access_status"`
 	// ConnCount is the total number of tracked connections for this client
 	// across every destination (WAN, LAN, VPN). For pool-scoped counts,
 	// use TunnelConns keyed by the pool's tunnel fwmarks.

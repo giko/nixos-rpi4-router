@@ -36,6 +36,7 @@ type Clients struct {
 	tunnelByMark map[string]string // fwmark hex → tunnel name
 	poolByIP     map[string]string // IP → pool name
 	allowed      map[string]struct{}
+	blocked      map[string]struct{}
 }
 
 // NewClients creates a Clients collector. Precomputes lookup tables from
@@ -66,11 +67,20 @@ func NewClients(opts ClientsOpts) *Clients {
 		allowed[strings.ToLower(sl.MAC)] = struct{}{}
 	}
 
+	// Build blocked MAC set. Unlike the allowlist, static leases are NOT
+	// merged here — a static lease pins an IP, it does not exempt a
+	// device from the blocklist.
+	blocked := make(map[string]struct{}, len(opts.Topology.BlockedMACs))
+	for _, mac := range opts.Topology.BlockedMACs {
+		blocked[strings.ToLower(mac)] = struct{}{}
+	}
+
 	return &Clients{
 		opts:         opts,
 		tunnelByMark: tunnelByMark,
 		poolByIP:     poolByIP,
 		allowed:      allowed,
+		blocked:      blocked,
 	}
 }
 
@@ -233,15 +243,26 @@ func (c *Clients) Run(ctx context.Context) error {
 			}
 		}
 
-		// Allowlist status.
-		if !c.opts.Topology.AllowlistEnabled {
-			cl.AllowlistStatus = "n/a"
-		} else if cl.MAC == "" {
-			cl.AllowlistStatus = "n/a"
-		} else if _, ok := c.allowed[cl.MAC]; ok {
-			cl.AllowlistStatus = "allowed"
-		} else {
-			cl.AllowlistStatus = "blocked"
+		// Access status — unified MAC-policy verdict. Blocklist wins:
+		// in the nftables forward chain the blockedMacs drop precedes
+		// the allowlist drop. With a blocklist but no allowlist, the
+		// policy is default-allow. cl.MAC is already lowercased by the
+		// merge steps above.
+		_, isBlocked := c.blocked[cl.MAC]
+		_, isAllowed := c.allowed[cl.MAC]
+		switch {
+		case cl.MAC == "":
+			cl.AccessStatus = "n/a"
+		case isBlocked:
+			cl.AccessStatus = "blocked"
+		case c.opts.Topology.AllowlistEnabled && isAllowed:
+			cl.AccessStatus = "allowed"
+		case c.opts.Topology.AllowlistEnabled:
+			cl.AccessStatus = "blocked"
+		case len(c.blocked) > 0:
+			cl.AccessStatus = "allowed"
+		default:
+			cl.AccessStatus = "n/a"
 		}
 
 		// Default LastSeen to now for non-dynamic (static/neighbor).

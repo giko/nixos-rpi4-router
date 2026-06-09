@@ -114,8 +114,8 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 		t.Errorf("static lease: MAC = %q, want aa:bb:cc:00:00:01", cl.MAC)
 	}
 	// Static lease MAC is implicitly in allowed set.
-	if cl.AllowlistStatus != "allowed" {
-		t.Errorf("static lease: AllowlistStatus = %q, want allowed", cl.AllowlistStatus)
+	if cl.AccessStatus != "allowed" {
+		t.Errorf("static lease: AccessStatus = %q, want allowed", cl.AccessStatus)
 	}
 	if cl.Route != "pool:vpn_pool" {
 		t.Errorf("static lease: Route = %q, want pool:vpn_pool", cl.Route)
@@ -136,8 +136,8 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 	if cl.Hostname != "phone" {
 		t.Errorf("phone: Hostname = %q, want phone", cl.Hostname)
 	}
-	if cl.AllowlistStatus != "allowed" {
-		t.Errorf("phone: AllowlistStatus = %q, want allowed", cl.AllowlistStatus)
+	if cl.AccessStatus != "allowed" {
+		t.Errorf("phone: AccessStatus = %q, want allowed", cl.AccessStatus)
 	}
 	if cl.Route != "wan" {
 		t.Errorf("phone: Route = %q, want wan", cl.Route)
@@ -152,8 +152,8 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 	if cl.LeaseType != "dynamic" {
 		t.Errorf("laptop: LeaseType = %q, want dynamic", cl.LeaseType)
 	}
-	if cl.AllowlistStatus != "blocked" {
-		t.Errorf("laptop: AllowlistStatus = %q, want blocked", cl.AllowlistStatus)
+	if cl.AccessStatus != "blocked" {
+		t.Errorf("laptop: AccessStatus = %q, want blocked", cl.AccessStatus)
 	}
 
 	// Neighbor-only device.
@@ -165,8 +165,8 @@ func TestClientsCollectorMergesSources(t *testing.T) {
 	if cl.LeaseType != "neighbor" {
 		t.Errorf("neighbor: LeaseType = %q, want neighbor", cl.LeaseType)
 	}
-	if cl.AllowlistStatus != "blocked" {
-		t.Errorf("neighbor: AllowlistStatus = %q, want blocked", cl.AllowlistStatus)
+	if cl.AccessStatus != "blocked" {
+		t.Errorf("neighbor: AccessStatus = %q, want blocked", cl.AccessStatus)
 	}
 	if cl.Route != "wan" {
 		t.Errorf("neighbor: Route = %q, want wan", cl.Route)
@@ -214,8 +214,8 @@ func TestClientsCollectorAllowlistDisabled(t *testing.T) {
 	}
 
 	for _, cl := range clients {
-		if cl.AllowlistStatus != "n/a" {
-			t.Errorf("client %s: AllowlistStatus = %q, want n/a", cl.IP, cl.AllowlistStatus)
+		if cl.AccessStatus != "n/a" {
+			t.Errorf("client %s: AccessStatus = %q, want n/a", cl.IP, cl.AccessStatus)
 		}
 	}
 }
@@ -394,5 +394,97 @@ func TestClientsCollectorNoNeighFunc(t *testing.T) {
 	}
 	if clients[0].IP != "192.168.1.10" {
 		t.Errorf("IP = %q, want 192.168.1.10", clients[0].IP)
+	}
+}
+
+func TestClientsCollectorBlocklistOnly(t *testing.T) {
+	// Default-allow with a targeted blacklist: blocked MAC -> "blocked",
+	// every other known MAC -> "allowed", MAC-less conntrack-synthesized
+	// client -> "n/a".
+	dir := t.TempDir()
+	leasesPath := filepath.Join(dir, "dnsmasq.leases")
+	leasesData := "1712800000 aa:bb:cc:dd:ee:01 192.168.1.50 phone *\n" +
+		"1712800000 aa:bb:cc:dd:ee:02 192.168.1.51 airmon *\n"
+	if err := os.WriteFile(leasesPath, []byte(leasesData), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	topo := &topology.Topology{
+		StaticLeases: []topology.StaticLease{
+			{MAC: "AA:BB:CC:00:00:01", IP: "192.168.1.10", Name: "desktop"},
+		},
+		AllowlistEnabled: false,
+		BlockedMACs:      []string{"AA:BB:CC:DD:EE:02"}, // uppercase on purpose: must match lowercased client MAC
+		LANInterface:     "eth0",
+	}
+
+	st := state.New()
+	// Conntrack-only client with no MAC anywhere -> synthesized, "n/a".
+	st.SetClientConns(map[string]conntrack.ClientConnInfo{
+		"192.168.1.77": {TotalConns: 2},
+	})
+
+	c := NewClients(ClientsOpts{
+		Topology:   topo,
+		LeasesPath: leasesPath,
+		State:      st,
+	})
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	clients, _ := st.SnapshotClients()
+	want := map[string]string{
+		"192.168.1.10": "allowed", // static lease, not blocked
+		"192.168.1.50": "allowed", // dynamic, not blocked
+		"192.168.1.51": "blocked", // on the blocklist
+		"192.168.1.77": "n/a",     // no MAC known
+	}
+	if len(clients) != len(want) {
+		t.Fatalf("expected %d clients, got %d: %+v", len(want), len(clients), clients)
+	}
+	for _, cl := range clients {
+		if cl.AccessStatus != want[cl.IP] {
+			t.Errorf("client %s: AccessStatus = %q, want %q", cl.IP, cl.AccessStatus, want[cl.IP])
+		}
+	}
+}
+
+func TestClientsCollectorBlocklistWinsOverAllowlist(t *testing.T) {
+	// A MAC present in BOTH lists is blocked: the nftables blockedMacs
+	// drop precedes the allowlist rule in the forward chain.
+	dir := t.TempDir()
+	leasesPath := filepath.Join(dir, "dnsmasq.leases")
+	leasesData := "1712800000 aa:bb:cc:dd:ee:01 192.168.1.50 phone *\n"
+	if err := os.WriteFile(leasesPath, []byte(leasesData), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	topo := &topology.Topology{
+		AllowlistEnabled: true,
+		AllowedMACs:      []string{"aa:bb:cc:dd:ee:01"},
+		BlockedMACs:      []string{"aa:bb:cc:dd:ee:01"},
+		LANInterface:     "eth0",
+	}
+
+	st := state.New()
+	c := NewClients(ClientsOpts{
+		Topology:   topo,
+		LeasesPath: leasesPath,
+		State:      st,
+	})
+	if err := c.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	clients, _ := st.SnapshotClients()
+	var got string
+	for _, cl := range clients {
+		if cl.IP == "192.168.1.50" {
+			got = cl.AccessStatus
+		}
+	}
+	if got != "blocked" {
+		t.Errorf("AccessStatus = %q, want blocked (blocklist wins)", got)
 	}
 }
