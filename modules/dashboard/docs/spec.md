@@ -542,7 +542,7 @@ Three tiers of collectors run as goroutines; all write into a single `State` str
 | `pools[].members[].flow_count` | `conntrack -L -m <fwmark>` counted (cold tier) |
 | `pools[].failsafe_drop_active` | `nft list chain ip mangle prerouting` — presence of the drop rule |
 | `clients[]` | Merge of: static leases (module config), dnsmasq leases file, conntrack flow origin IPs, `ip neigh show` for MAC-to-IP. Derived: which tunnel the client's new flows land on (from fwmark 0-mask match in conntrack) |
-| `clients[].allowlist_status` | `router.nftables.allowedMacs` (from module config, cross-referenced with client MAC) |
+| `clients[].access_status` | `router.nftables.blockedMacs` + `router.nftables.allowedMacs` (from module config, cross-referenced with client MAC; blocklist wins) |
 | `adguard.*` | HTTP GET `http://127.0.0.1:3000/control/stats` + `/control/querylog` + `/control/clients` |
 | `traffic.interfaces[]` | `/proc/net/dev` diffed over 2-second tick for rate; totals straight from the counter. Per-interface 60-sample sparkline ring buffer kept in memory |
 | `firewall.port_forwards` | Module config (`router.portForwards`) |
@@ -574,12 +574,12 @@ The `stale` flag is `true` if the collector for any subfield of `data` has faile
 - `GET /api/system` → `{cpu, memory, temperature_c, throttled, uptime_seconds, services}`
 - `GET /api/tunnels` → `{tunnels: [{name, healthy, public_key, endpoint, latest_handshake_seconds_ago, rx_bytes, tx_bytes, exit_ip, routing_table, fwmark}]}`
 - `GET /api/pools` → `{pools: [{name, members, client_ips, failsafe_drop_active}]}`
-- `GET /api/clients` → `{clients: [{hostname, ip, mac, lease_type, last_seen, route, current_tunnel, allowlist_status, flow_count, dns_queries_1h}]}`
+- `GET /api/clients` → `{clients: [{hostname, ip, mac, lease_type, last_seen, route, current_tunnel, access_status, flow_count, dns_queries_1h}]}`
 - `GET /api/clients/{ip}` → `{...base fields..., recent_queries, flows, blocked_queries_1h}`
 - `GET /api/adguard/stats` → `{queries_24h, blocked_24h, block_rate, top_blocked, top_clients, query_density_24h}`
 - `GET /api/adguard/querylog?limit=N&client=&domain=` → `{queries: [...]}`
 - `GET /api/traffic` → `{interfaces: [{name, rx_bps, tx_bps, rx_bytes_total, tx_bytes_total, samples_60s}]}`
-- `GET /api/firewall/rules` → `{port_forwards, pbr, allowed_macs, blocked_forward_count_1h}`
+- `GET /api/firewall/rules` → `{port_forwards, pbr, allowed_macs, blocked_macs, blocked_forward_count_1h}`
 - `GET /api/firewall/counters` → `{chains: [...]}`
 - `GET /api/qos` → `{wan_egress, wan_ingress}`
 - `GET /api/upnp` → `{leases: [...]}`
@@ -811,7 +811,7 @@ Candidate follow-ups, in rough priority order. Nothing here is a commitment — 
 
 1. **Mutation actions** (the big one):
    - Toggle a client between WAN and a pool
-   - Add/remove a MAC in the allowlist
+   - Add/remove a MAC in the allowlist/blocklist
    - Flush conntrack for a client
    - Restart a tunnel
    - Force AdGuard filter refresh

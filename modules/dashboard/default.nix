@@ -43,6 +43,7 @@ let
     }) config.router.dhcp.staticLeases;
     allowlist_enabled = allowlistEnabled;
     allowed_macs = allowlistMacs;
+    blocked_macs = lib.unique (map lib.toLower config.router.nftables.blockedMacs);
     port_forwards = map (pf: {
       protocol = pf.proto;
       external_port = pf.externalPort;
