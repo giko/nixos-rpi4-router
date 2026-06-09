@@ -31,10 +31,10 @@ function RouteValue({ route }: { route: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Allowlist status badge                                             */
+/*  Access status badge                                                */
 /* ------------------------------------------------------------------ */
 
-function AllowlistBadge({ status }: { status: string }) {
+function AccessBadge({ status }: { status: string }) {
   const kind =
     status === "allowed"
       ? "healthy"
@@ -176,8 +176,8 @@ export function ClientDetail() {
             <DetailRow label="Lease Type">
               <LeaseTypeBadge type={client.lease_type} />
             </DetailRow>
-            <DetailRow label="Allowlist">
-              <AllowlistBadge status={client.allowlist_status} />
+            <DetailRow label="Access">
+              <AccessBadge status={client.access_status} />
             </DetailRow>
           </div>
 

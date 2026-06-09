@@ -39,7 +39,7 @@ function matchesFilter(c: Client, filter: Filter): boolean {
       return (
         c.lease_type === "neighbor" ||
         c.hostname === "" ||
-        c.allowlist_status === "blocked"
+        c.access_status === "blocked"
       );
   }
 }
@@ -50,9 +50,9 @@ function matchesFilter(c: Client, filter: Filter): boolean {
 
 function StatusPip({ client }: { client: Client }) {
   const color =
-    client.allowlist_status === "blocked"
+    client.access_status === "blocked"
       ? "bg-rose"
-      : client.allowlist_status === "allowed"
+      : client.access_status === "allowed"
         ? "bg-emerald"
         : "bg-amber";
   return <span className={cn("inline-block h-1.5 w-1.5 rounded-full", color)} />;
@@ -76,10 +76,10 @@ function RouteCell({ route }: { route: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Allowlist cell                                                     */
+/*  Access cell                                                        */
 /* ------------------------------------------------------------------ */
 
-function AllowlistCell({ status }: { status: string }) {
+function AccessCell({ status }: { status: string }) {
   const kind =
     status === "allowed"
       ? "healthy"
@@ -138,10 +138,10 @@ const columns: Column<Client>[] = [
     sortValue: (r) => r.route,
   },
   {
-    key: "allowlist",
-    label: "Allowlist",
-    render: (r) => <AllowlistCell status={r.allowlist_status} />,
-    sortValue: (r) => r.allowlist_status,
+    key: "access",
+    label: "Access",
+    render: (r) => <AccessCell status={r.access_status} />,
+    sortValue: (r) => r.access_status,
   },
   {
     key: "conns",

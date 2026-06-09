@@ -77,7 +77,7 @@ export type Client = {
   lease_type: string;
   last_seen: string;
   route: string;
-  allowlist_status: string;
+  access_status: string;
   conn_count: number;
   // tunnel_conns maps fwmark (hex like "0x20000") → connection count.
   // Use this for pool-scoped counts; conn_count is the global total.
@@ -235,6 +235,7 @@ export type FirewallRules = {
   port_forwards: PortForward[];
   pbr: PBR;
   allowed_macs: string[];
+  blocked_macs: string[];
   blocked_forward_count_1h: number;
 };
 export type RuleCounter = {
